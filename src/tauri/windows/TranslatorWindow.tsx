@@ -242,6 +242,7 @@ export function TranslatorWindow() {
                 defaultShowSettings
                 editorRows={10}
                 containerStyle={{ paddingTop: settings.enableBackgroundBlur ? '' : '26px' }}
+                openSource='desktop'
                 onSettingsSave={onSettingsSave}
                 onSettingsShow={onSettingsShow}
             />

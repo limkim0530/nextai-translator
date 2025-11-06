@@ -477,6 +477,7 @@ export interface IInnerTranslatorProps {
     containerStyle?: React.CSSProperties
     editorRows?: number
     showLogo?: boolean
+    openSource?: 'popup' | 'content-script' | 'desktop'
     onSettingsSave?: (oldSettings: ISettings) => void
     onSettingsShow?: (isShow: boolean) => void
 }
@@ -2561,7 +2562,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                             {translateDeps.engineModel && ` ${translateDeps.engineModel}`}
                         </div>
                     )}
-                    {!showSettings && (
+                    {!showSettings && props.openSource !== 'content-script' && (
                         <div className={styles.footerActions}>
                             <Tooltip content={t('History')} placement='top'>
                                 <Button

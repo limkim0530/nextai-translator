@@ -25,7 +25,7 @@ function App() {
             }}
             data-testid='popup-container'
         >
-            <Translator showSettingsIcon defaultShowSettings engine={engine} autoFocus />
+            <Translator showSettingsIcon defaultShowSettings engine={engine} autoFocus openSource='popup' />
         </div>
     )
 }

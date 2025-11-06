@@ -123,6 +123,7 @@ async function showPopupCard(reference: ReferenceElement, text: string, autoFocu
                             showSettingsIcon
                             defaultShowSettings={isUserscript}
                             showLogo={false}
+                            openSource='content-script'
                         />
                     </InnerContainer>
                 </JSS>
