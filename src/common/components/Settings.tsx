@@ -2538,15 +2538,6 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         >
                             <MyCheckbox onBlur={onBlur} />
                         </FormItem>
-                        <FormItem
-                            style={{
-                                display: isDesktopApp ? 'block' : 'none',
-                            }}
-                            name='disableCollectingStatistics'
-                            label={t('disable collecting statistics')}
-                        >
-                            <MyCheckbox onBlur={onBlur} />
-                        </FormItem>
                     </div>
                     <div
                         style={{

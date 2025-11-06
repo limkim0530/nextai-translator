@@ -54,10 +54,7 @@ export function getManifest(browser: 'firefox' | 'chromium') {
         host_permissions: [
             'https://*.openai.com/',
             'https://*.openai.azure.com/',
-            'https://*.ingest.sentry.io/',
             '*://speech.platform.bing.com/',
-            'https://*.googletagmanager.com/',
-            'https://*.google-analytics.com/',
             'https://*.minimax.chat/',
             'https://*.githubusercontent.com/',
             'https://*.baidu.com/',

@@ -8,7 +8,6 @@ import { PREFIX } from '../../common/constants'
 import { translate } from '../../common/translate'
 import { detectLang, intoLangCode } from '../../common/lang'
 import { useSettings } from '../../common/hooks/useSettings'
-import { setupAnalysis } from '../../common/analysis'
 import { Window } from '../components/Window'
 import { setExternalOriginalText } from '../../common/store'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
@@ -70,10 +69,6 @@ export function TranslatorWindow() {
     const { settings } = useSettings()
 
     useMemoWindow({ size: true, position: false, show: !settings.runAtStartup })
-
-    useEffect(() => {
-        setupAnalysis()
-    }, [])
 
     useEffect(() => {
         let unlisten: UnlistenFn | undefined

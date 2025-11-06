@@ -77,7 +77,6 @@ const settingKeys: Record<keyof ISettings, number> = {
     runAtStartup: 1,
     selectInputElementsText: 1,
     readSelectedWordsFromInputElementsText: 1,
-    disableCollectingStatistics: 1,
     allowUsingClipboardWhenSelectedTextNotAvailable: 1,
     pinned: 1,
     autoCollect: 1,
@@ -153,9 +152,6 @@ export async function getSettings(): Promise<ISettings> {
     }
     if (!settings.i18n) {
         settings.i18n = defaulti18n
-    }
-    if (!settings.disableCollectingStatistics) {
-        settings.disableCollectingStatistics = false
     }
     if (settings.selectInputElementsText === undefined || settings.selectInputElementsText === null) {
         settings.selectInputElementsText = defaultSelectInputElementsText
