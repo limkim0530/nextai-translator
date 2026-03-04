@@ -50,6 +50,12 @@ import { CUSTOM_MODEL_ID } from '../constants'
 import { isMacOS } from '../utils'
 import NumberInput from './NumberInput'
 import { DurationPicker } from './DurationPicker'
+import {
+    getRecommendedOpenAIAPIPath,
+    OPENAI_CHAT_COMPLETIONS_API_PATH,
+    OPENAI_PREFERRED_DEFAULT_MODEL,
+    OPENAI_RESPONSES_API_PATH,
+} from '../openai-api-path'
 
 const langOptions: Value = supportedLanguages.reduce((acc, [id, label]) => {
     return [
@@ -825,6 +831,23 @@ function APIModelSelector({ currentProvider, provider, apiKey, value, onChange, 
         })()
     }, [apiKey, currentProvider, provider, refreshFlag, t, theme.colors.contentPrimary, theme.colors.contentTertiary])
 
+    useEffect(() => {
+        if (provider !== currentProvider || options.length === 0) {
+            return
+        }
+        const optionIDs = options.map((option) => option.id)
+        if (value && optionIDs.includes(value)) {
+            return
+        }
+        const fallback =
+            provider === 'OpenAI' && optionIDs.includes(OPENAI_PREFERRED_DEFAULT_MODEL)
+                ? OPENAI_PREFERRED_DEFAULT_MODEL
+                : optionIDs.find((id) => id !== CUSTOM_MODEL_ID) ?? optionIDs[0]
+        if (fallback && fallback !== value) {
+            onChange?.(fallback)
+        }
+    }, [currentProvider, onChange, options, provider, value])
+
     return (
         <div>
             <div
@@ -1392,9 +1415,38 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
         }
     }, [isTauri, settings, i18n])
 
-    const onChange = useCallback((_changes: Partial<ISettings>, values_: ISettings) => {
-        setValues(values_)
-    }, [])
+    const onChange = useCallback(
+        (changes: Partial<ISettings>, values_: ISettings) => {
+            let nextValues = values_
+            const shouldRecomputeOpenAIPath =
+                values_.provider === 'OpenAI' &&
+                (changes.provider !== undefined ||
+                    changes.apiModel !== undefined ||
+                    (values_.apiModel === CUSTOM_MODEL_ID && changes.customModelName !== undefined))
+
+            if (shouldRecomputeOpenAIPath) {
+                const selectedModel =
+                    values_.apiModel === CUSTOM_MODEL_ID ? values_.customModelName ?? '' : values_.apiModel
+                const recommendedPath = getRecommendedOpenAIAPIPath(selectedModel)
+                const normalizedPath =
+                    recommendedPath === OPENAI_RESPONSES_API_PATH
+                        ? OPENAI_RESPONSES_API_PATH
+                        : OPENAI_CHAT_COMPLETIONS_API_PATH
+                if (nextValues.apiURLPath !== normalizedPath) {
+                    nextValues = {
+                        ...nextValues,
+                        apiURLPath: normalizedPath,
+                    }
+                    form.setFieldsValue({
+                        apiURLPath: normalizedPath,
+                    })
+                }
+            }
+
+            setValues(nextValues)
+        },
+        [form]
+    )
 
     const onSubmit = useCallback(
         async (data: ISettings) => {
