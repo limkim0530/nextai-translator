@@ -2356,27 +2356,6 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         >
                             <FormItem
                                 required={values.provider === 'MiniMax'}
-                                name='miniMaxGroupID'
-                                label='MiniMax Group ID'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://api.minimax.chat/user-center/basic-information'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            {t('MiniMax page')}
-                                        </a>{' '}
-                                        {t('to get your Group ID.')}
-                                    </div>
-                                }
-                            >
-                                <Input size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                required={values.provider === 'MiniMax'}
                                 name='miniMaxAPIKey'
                                 label='MiniMax API Key'
                                 caption={
@@ -2384,7 +2363,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                                         {t('Go to the')}{' '}
                                         <a
                                             target='_blank'
-                                            href='https://api.minimax.chat/user-center/basic-information/interface-key'
+                                            href='https://platform.minimaxi.com/user-center/basic-information/interface-key'
                                             rel='noreferrer'
                                             style={linkStyle}
                                         >
