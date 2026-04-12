@@ -13,6 +13,7 @@
     "dev-chromium": "vite -c vite.config.chromium.ts",
     "dev-firefox": "NODE_ENV=development vite build -c vite.config.firefox.ts --watch",
     "build-browser-extension": "tsc && make build-browser-extension",
+    "build-chrome": "vite build -c vite.config.chromium.ts",
     "build-userscript": "make build-userscript",
     "clean": "make clean",
     "test": "vitest test",
