@@ -48,7 +48,7 @@ export abstract class AbstractOpenAI extends AbstractEngine {
         return texts.join('')
     }
 
-    async listModels(apiKey: string | undefined): Promise<IModel[]> {
+    async listModels(apiKey: string | undefined, apiURL?: string): Promise<IModel[]> {
         if (!apiKey) {
             return []
         }
@@ -76,7 +76,7 @@ export abstract class AbstractOpenAI extends AbstractEngine {
             ]
         }
         const apiKey_ = apiKey.split(',')[0]
-        const apiUrl = await this.getAPIURL()
+        const apiUrl = apiURL || (await this.getAPIURL())
         const url = urlJoin(apiUrl, '/v1/models')
         const headers = {
             'Content-Type': 'application/json',

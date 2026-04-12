@@ -11,6 +11,6 @@ export abstract class AbstractEngine implements IEngine {
         return false
     }
     abstract getModel(): Promise<string>
-    abstract listModels(apiKey: string | undefined): Promise<IModel[]>
+    abstract listModels(apiKey: string | undefined, apiURL?: string): Promise<IModel[]>
     abstract sendMessage(req: IMessageRequest): Promise<void>
 }

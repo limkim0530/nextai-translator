@@ -777,6 +777,7 @@ interface APIModelSelectorProps {
     currentProvider: Provider
     provider: Provider
     apiKey?: string
+    apiURL?: string
     value?: string
     onChange?: (value: string) => void
     onBlur?: () => void
@@ -792,6 +793,7 @@ export function APIModelSelector({
     currentProvider,
     provider,
     apiKey,
+    apiURL,
     value,
     onChange,
     onBlur,
@@ -815,7 +817,7 @@ export function APIModelSelector({
         setIsLoading(true)
         ;(async () => {
             try {
-                const models = await engine.listModels(apiKey)
+                const models = await engine.listModels(apiKey, apiURL)
                 setOptions([
                     ...models.map((model: IModel) => ({
                         label: (
@@ -872,7 +874,16 @@ export function APIModelSelector({
                 setIsLoading(false)
             }
         })()
-    }, [apiKey, currentProvider, provider, refreshFlag, t, theme.colors.contentPrimary, theme.colors.contentTertiary])
+    }, [
+        apiKey,
+        apiURL,
+        currentProvider,
+        provider,
+        refreshFlag,
+        t,
+        theme.colors.contentPrimary,
+        theme.colors.contentTertiary,
+    ])
 
     useEffect(() => {
         if (provider !== currentProvider || options.length === 0) {
@@ -2209,6 +2220,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                                     provider='Groq'
                                     currentProvider={values.provider}
                                     apiKey={values.groqAPIKey}
+                                    apiURL={values.groqAPIURL}
                                     onBlur={onBlur}
                                 />
                             </FormItem>
@@ -2472,6 +2484,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                                     provider='Gemini'
                                     currentProvider={values.provider}
                                     apiKey={values.geminiAPIKey}
+                                    apiURL={values.geminiAPIURL}
                                     onBlur={onBlur}
                                 />
                             </FormItem>
@@ -2596,6 +2609,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                                     provider='OpenAI'
                                     currentProvider={values.provider}
                                     apiKey={values.apiKeys}
+                                    apiURL={values.apiURL}
                                     onBlur={onBlur}
                                 />
                             </FormItem>

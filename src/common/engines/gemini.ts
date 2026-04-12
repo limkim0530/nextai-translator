@@ -27,12 +27,12 @@ const SAFETY_SETTINGS = [
 
 export class Gemini extends AbstractEngine {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async listModels(apiKey: string | undefined): Promise<IModel[]> {
+    async listModels(apiKey: string | undefined, apiURL?: string): Promise<IModel[]> {
         if (!apiKey) {
             return []
         }
         const settings = await getSettings()
-        const geminiAPIURL = settings.geminiAPIURL
+        const geminiAPIURL = apiURL || settings.geminiAPIURL
         const url =
             urlJoin(geminiAPIURL, '/v1beta/models') +
             qs.stringify({ key: apiKey, pageSize: 1000 }, { addQueryPrefix: true })

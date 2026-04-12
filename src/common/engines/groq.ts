@@ -11,13 +11,13 @@ export class Groq extends AbstractOpenAI {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async listModels(apiKey: string | undefined): Promise<IModel[]> {
+    async listModels(apiKey: string | undefined, apiURL?: string): Promise<IModel[]> {
         if (!apiKey) {
             return []
         }
         const fetcher = getUniversalFetch()
         const settings = await getSettings()
-        const url = urlJoin(settings.groqAPIURL, '/openai/v1/models')
+        const url = urlJoin(apiURL || settings.groqAPIURL, '/openai/v1/models')
         const resp = await fetcher(url, {
             cache: 'no-cache',
             headers: {
