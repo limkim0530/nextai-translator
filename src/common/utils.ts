@@ -114,6 +114,8 @@ const settingKeys: Record<keyof ISettings, number> = {
     uiFontSize: 1,
     iconSize: 1,
     noModelsAPISupport: 1,
+    claudeThinking: 1,
+    claudeThinkingLevel: 1,
 }
 
 export async function getSettings(): Promise<ISettings> {
@@ -215,7 +217,7 @@ export async function getSettings(): Promise<ISettings> {
         settings.ollamaAPIURL = 'http://127.0.0.1:11434'
     }
     if (!settings.miniMaxAPIModel) {
-        settings.miniMaxAPIModel = 'MiniMax-M2.5'
+        settings.miniMaxAPIModel = 'MiniMax-M2.7'
     }
     if (!settings.groqAPIURL) {
         settings.groqAPIURL = 'https://api.groq.com'
@@ -553,3 +555,38 @@ export function getAssetUrl(asset: string) {
 }
 export const isMacOS = navigator.userAgent.includes('Mac OS X')
 export const isWindows = navigator.userAgent.includes('Windows')
+
+/** Maps a provider name to its API key field in ISettings. */
+export function getAPIKeyForProvider(provider: string, settings: ISettings): string | undefined {
+    switch (provider) {
+        case 'OpenAI':
+            return settings.apiKeys
+        case 'Azure':
+            return settings.azureAPIKeys
+        case 'Claude':
+            return settings.claudeAPIKey
+        case 'Gemini':
+            return settings.geminiAPIKey
+        case 'Groq':
+            return settings.groqAPIKey
+        case 'DeepSeek':
+            return settings.deepSeekAPIKey
+        case 'Cerebras':
+            return settings.cerebrasAPIKey
+        case 'Moonshot':
+            return settings.moonshotAPIKey
+        case 'MiniMax':
+            return settings.miniMaxAPIKey
+        case 'Cohere':
+            return settings.cohereAPIKey
+        case 'Kimi':
+            return settings.kimiAccessToken
+        case 'ChatGLM':
+            return settings.chatglmAccessToken
+        case 'ChatGPT':
+        case 'Ollama':
+            return undefined
+        default:
+            return undefined
+    }
+}

@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useReducer, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import _ from 'underscore'
 import { Tabs, Tab, StyledTabList, StyledTabPanel } from 'baseui-sd/tabs-motion'
 import icon from '../assets/images/icon-large.png'
 import beams from '../assets/images/beams.jpg'
+import wechat from '../assets/images/wechat.png'
+import alipay from '../assets/images/alipay.png'
 import toast, { Toaster } from 'react-hot-toast'
 import * as utils from '../utils'
 import { Client as Styletron } from 'styletron-engine-atomic'
@@ -26,24 +28,39 @@ import AppConfig from '../../../package.json'
 import { useSettings } from '../hooks/useSettings'
 import { defaultTTSProvider, langCode2TTSLang, ttsLangTestTextMap } from '../tts'
 import { RiDeleteBin5Line } from 'react-icons/ri'
-import { IoIosSave, IoMdAdd } from 'react-icons/io'
+import { IoIosHelpCircleOutline, IoIosSave, IoMdAdd } from 'react-icons/io'
 import { TTSProvider } from '../tts/types'
 import { fetchEdgeVoices } from '../tts/edge-tts'
 import { useThemeType } from '../hooks/useThemeType'
 import { Slider } from 'baseui-sd/slider'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { actionService } from '../services/action'
+import { Action } from '../internal-services/db'
 import { GlobalSuspense } from './GlobalSuspense'
+import { Modal, ModalBody, ModalButton, ModalFooter, ModalHeader } from 'baseui-sd/modal'
 import { Provider, engineIcons, getEngine } from '../engines'
 import { IModel } from '../engines/interfaces'
 import { PiTextbox } from 'react-icons/pi'
 import { BsKeyboard } from 'react-icons/bs'
 import { TbCloudNetwork } from 'react-icons/tb'
 import { Cell, Grid } from 'baseui-sd/layout-grid'
+import {
+    II18nPromotionContent,
+    IPromotionResponse,
+    fetchPromotions,
+    II18nPromotionContentItem,
+    choicePromotionItem,
+    IPromotionItem,
+} from '../services/promotion'
 import useSWR from 'swr'
+import { Markdown } from './Markdown'
+import type { UnlistenFn } from '@tauri-apps/api/event'
+import { usePromotionShowed } from '../hooks/usePromotionShowed'
 import { Skeleton } from 'baseui-sd/skeleton'
 import { SpeakerIcon } from './SpeakerIcon'
 import { RxSpeakerLoud } from 'react-icons/rx'
+import { Notification } from 'baseui-sd/notification'
+import { usePromotionNeverDisplay } from '../hooks/usePromotionNeverDisplay'
 import { Textarea } from 'baseui-sd/textarea'
 import { ProxyTester } from './ProxyTester'
 import { CUSTOM_MODEL_ID } from '../constants'
@@ -206,6 +223,35 @@ function LanguageDetectionEngineSelector({ value, onChange, onBlur }: ILanguageD
                 { label: t('Google'), id: 'google' },
                 { label: t('Bing'), id: 'bing' },
                 { label: t('Local'), id: 'local' },
+            ]}
+        />
+    )
+}
+
+interface IThinkingLevelSelectorProps {
+    value?: string
+    onChange?: (value: string) => void
+    onBlur?: () => void
+}
+
+function ThinkingLevelSelector({ value, onChange, onBlur }: IThinkingLevelSelectorProps) {
+    const { t } = useTranslation()
+
+    return (
+        <Select
+            size='compact'
+            onBlur={onBlur}
+            searchable={false}
+            clearable={false}
+            value={value ? [{ id: value }] : [{ id: 'medium' }]}
+            onChange={(params) => {
+                onChange?.(params.value[0]?.id as string)
+                onBlur?.()
+            }}
+            options={[
+                { id: 'low', label: t('Low') },
+                { id: 'medium', label: t('Medium') },
+                { id: 'high', label: t('High') },
             ]}
         />
     )
@@ -751,9 +797,17 @@ interface APIModelSelectorProps {
 interface APIModelOption {
     label: React.ReactNode
     id: string
+    name?: string
 }
 
-function APIModelSelector({ currentProvider, provider, apiKey, value, onChange, onBlur }: APIModelSelectorProps) {
+export function APIModelSelector({
+    currentProvider,
+    provider,
+    apiKey,
+    value,
+    onChange,
+    onBlur,
+}: APIModelSelectorProps) {
     const { t } = useTranslation()
     const [isLoading, setIsLoading] = useState(false)
     const [options, setOptions] = useState<APIModelOption[]>([])
@@ -805,6 +859,7 @@ function APIModelSelector({ currentProvider, provider, apiKey, value, onChange, 
                             </div>
                         ),
                         id: model.id,
+                        name: model.name,
                     })),
                     ...(engine.supportCustomModel()
                         ? [
@@ -862,8 +917,19 @@ function APIModelSelector({ currentProvider, provider, apiKey, value, onChange, 
                     isLoading={isLoading}
                     size='compact'
                     onBlur={onBlur}
-                    searchable={false}
+                    searchable={true}
                     clearable={false}
+                    backspaceRemoves={false}
+                    deleteRemoves={false}
+                    filterOptions={(options, filterValue) => {
+                        if (!filterValue) return options
+                        const filter = filterValue.toLowerCase()
+                        return options.filter((option) => {
+                            const id = (option.id as string)?.toLowerCase() ?? ''
+                            const name = (option.name as string)?.toLowerCase() ?? ''
+                            return id.includes(filter) || name.includes(filter)
+                        })
+                    }}
                     value={
                         value
                             ? [
@@ -1041,6 +1107,45 @@ function RunAtStartupCheckbox({ value, onChange, onBlur }: RunAtStartupCheckboxP
 }
 
 const useStyles = createUseStyles({
+    headerPromotion: (props: IThemedStyleProps) => {
+        return {
+            '& p': {
+                margin: '1px 0',
+            },
+            '& a': {
+                color: props.theme.colors.contentPrimary,
+                textDecoration: 'underline',
+            },
+        }
+    },
+    promotion: (props: IThemedStyleProps) => {
+        return {
+            'display': 'flex',
+            'flexDirection': 'column',
+            'gap': '4px',
+            'borderRadius': '12px',
+            'padding': '10px 14px',
+            'color': props.themeType === 'dark' ? props.theme.colors.black : props.theme.colors.contentPrimary,
+            'backgroundColor': props.theme.colors.warning100,
+            '& p': {
+                margin: '2px 0',
+            },
+            '& a': {
+                color: props.themeType === 'dark' ? props.theme.colors.black : props.theme.colors.contentPrimary,
+                textDecoration: 'underline',
+            },
+        }
+    },
+    disclaimer: (props: IThemedStyleProps) => {
+        return {
+            'color': props.theme.colors.contentPrimary,
+            'lineHeight': 1.8,
+            '& a': {
+                color: props.theme.colors.contentPrimary,
+                textDecoration: 'underline',
+            },
+        }
+    },
     footer: (props: IThemedStyleProps) =>
         props.isDesktopApp
             ? {
@@ -1052,11 +1157,14 @@ const useStyles = createUseStyles({
                   cursor: 'pointer',
                   left: '0',
                   bottom: '0',
-                  paddingLeft: '6px',
+                  paddingLeft: '14px',
                   display: 'flex',
                   alignItems: 'center',
-                  background: props.themeType === 'dark' ? 'rgba(31, 31, 31, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-                  backdropFilter: 'blur(10px)',
+                  background: props.themeType === 'dark' ? 'rgba(31, 31, 31, 0.65)' : 'rgba(255, 255, 255, 0.65)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  borderTop: `1px solid ${props.themeType === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                  transition: 'background 0.3s ease',
               }
             : {
                   color: props.theme.colors.contentSecondary,
@@ -1071,26 +1179,27 @@ const useStyles = createUseStyles({
 const useHotkeyRecorderStyles = createUseStyles({
     'hotkeyRecorder': (props: IThemedStyleProps) => ({
         position: 'relative',
-        height: '32px',
-        lineHeight: '32px',
+        height: '34px',
+        lineHeight: '34px',
         padding: '0 14px',
-        borderRadius: '4px',
+        borderRadius: '10px',
         width: '300px',
         cursor: 'pointer',
         border: '1px dashed transparent',
-        backgroundColor: props.theme.colors.backgroundTertiary,
+        backgroundColor: props.themeType === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
         color: props.theme.colors.primary,
+        transition: 'all 0.2s ease',
     }),
     'clearHotkey': {
         position: 'absolute',
         top: '10px',
         right: '12px',
     },
-    'caption': {
+    'caption': (props: IThemedStyleProps) => ({
         marginTop: '4px',
         fontSize: '11px',
-        color: '#999',
-    },
+        color: props.theme.colors.contentTertiary,
+    }),
     'recording': {
         animation: '$recording 2s infinite',
     },
@@ -1099,8 +1208,8 @@ const useHotkeyRecorderStyles = createUseStyles({
             backgroundColor: 'transparent',
         },
         '50%': {
-            backgroundColor: 'rgb(238, 238, 238)',
-            borderColor: '#999',
+            backgroundColor: 'rgba(128,128,128,0.12)',
+            borderColor: 'rgba(128,128,128,0.4)',
         },
         '100%': {
             backgroundColor: 'transparent',
@@ -1209,10 +1318,11 @@ function HotkeyRecorder({ value, onChange, onBlur, testId }: IHotkeyRecorderProp
 interface IAddProviderIconsProps {
     options: Options
     currentProvider?: Provider
+    hasPromotion?: boolean
     theme: typeof LightTheme
 }
 
-const addProviderIcons = ({ options }: IAddProviderIconsProps) => {
+const addProviderIcons = ({ options, currentProvider, hasPromotion, theme }: IAddProviderIconsProps) => {
     if (!Array.isArray(options)) {
         return options
     }
@@ -1248,6 +1358,16 @@ const addProviderIcons = ({ options }: IAddProviderIconsProps) => {
                     }}
                 >
                     {label}
+                    {hasPromotion && currentProvider !== 'OpenAI' && (
+                        <div
+                            style={{
+                                width: '0.45rem',
+                                height: '0.45rem',
+                                borderRadius: '50%',
+                                backgroundColor: theme.colors.warning300,
+                            }}
+                        />
+                    )}
                 </div>
             )
         }
@@ -1261,13 +1381,23 @@ const addProviderIcons = ({ options }: IAddProviderIconsProps) => {
 interface IProviderSelectorProps {
     value?: Provider
     onChange?: (value: Provider) => void
+    hasPromotion?: boolean
 }
 
-function ProviderSelector({ value, onChange }: IProviderSelectorProps) {
+export function ProviderSelector({ value, onChange, hasPromotion }: IProviderSelectorProps) {
     const { theme } = useTheme()
     const { t } = useTranslation()
 
-    const overrides: SelectProps['overrides'] = undefined
+    let overrides: SelectProps['overrides'] = undefined
+    if (hasPromotion && value !== 'OpenAI') {
+        overrides = {
+            ControlContainer: {
+                style: {
+                    borderColor: theme.colors.warning300,
+                },
+            },
+        }
+    }
 
     const options = utils.isDesktopApp()
         ? ([
@@ -1327,6 +1457,7 @@ function ProviderSelector({ value, onChange }: IProviderSelectorProps) {
             options={addProviderIcons({
                 options,
                 currentProvider: value,
+                hasPromotion,
                 theme,
             })}
         />
@@ -1338,6 +1469,8 @@ const { Form, FormItem, useForm } = createForm<ISettings>()
 interface IInnerSettingsProps {
     showFooter?: boolean
     onSave?: (oldSettings: ISettings) => void
+    headerPromotionID?: string
+    openaiAPIKeyPromotionID?: string
 }
 
 interface ISettingsProps extends IInnerSettingsProps {
@@ -1357,8 +1490,322 @@ export function Settings({ engine, ...props }: ISettingsProps) {
     )
 }
 
-export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProps) {
+interface IPerActionModelConfigProps {
+    settings: ISettings
+}
+
+// Persist selected action across Settings open/close cycles
+let lastSelectedActionId: number | undefined
+
+function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
+    const { t } = useTranslation()
+    const { theme } = useTheme()
+    const actions = useLiveQuery(() => actionService.list(), [])
+    const [selectedActionId, setSelectedActionId] = useState<number | undefined>(lastSelectedActionId)
+    const [selectedAction, setSelectedAction] = useState<Action | undefined>(undefined)
+    const [useCustomModel, setUseCustomModel] = useState(false)
+    const [actionProvider, setActionProvider] = useState<Provider | undefined>(undefined)
+    const [actionModel, setActionModel] = useState<string | undefined>(undefined)
+    const [isCustomModelName, setIsCustomModelName] = useState(false)
+    const [actionThinking, setActionThinking] = useState(false)
+    const [actionThinkingLevel, setActionThinkingLevel] = useState<string>('medium')
+
+    // When actions load, default to first action (or restore last selection)
+    useEffect(() => {
+        if (actions && actions.length > 0 && selectedActionId === undefined) {
+            setSelectedActionId(actions[0].id)
+        }
+    }, [actions, selectedActionId])
+
+    // Persist selected action for next Settings open
+    useEffect(() => {
+        lastSelectedActionId = selectedActionId
+    }, [selectedActionId])
+
+    // When selected action changes, load its settings
+    useEffect(() => {
+        if (!actions || selectedActionId === undefined) return
+        const action = actions.find((a) => a.id === selectedActionId)
+        setSelectedAction(action)
+        if (action) {
+            const hasCustom = !!(action.provider || action.apiModel)
+            setUseCustomModel(hasCustom)
+            setActionProvider(action.provider || settings.provider)
+            setActionModel(action.apiModel || '')
+            setIsCustomModelName(false)
+            setActionThinking(action.thinking ?? false)
+            setActionThinkingLevel(action.thinkingLevel ?? 'medium')
+        }
+    }, [actions, selectedActionId, settings.provider])
+
+    const handleSave = useCallback(
+        async (provider?: Provider, model?: string, enabled?: boolean, thinking?: boolean, thinkingLevel?: string) => {
+            if (!selectedAction) return
+            const shouldEnable = enabled !== undefined ? enabled : useCustomModel
+            if (shouldEnable) {
+                await actionService.update(selectedAction, {
+                    provider: provider ?? actionProvider,
+                    apiModel: model ?? actionModel,
+                    thinking: thinking ?? actionThinking,
+                    thinkingLevel: (thinkingLevel ?? actionThinkingLevel) as 'low' | 'medium' | 'high',
+                })
+            } else {
+                // Explicitly clear per-action overrides
+                await actionService.update(selectedAction, {
+                    provider: undefined,
+                    apiModel: undefined,
+                    thinking: undefined,
+                    thinkingLevel: undefined,
+                })
+            }
+        },
+        [selectedAction, useCustomModel, actionProvider, actionModel, actionThinking, actionThinkingLevel]
+    )
+
+    const actionOptions = useMemo(() => {
+        if (!actions) return []
+        return actions.map((action) => ({
+            id: action.id,
+            label: action.mode ? t(action.name) : action.name,
+        }))
+    }, [actions, t])
+
+    const apiKey = actionProvider ? utils.getAPIKeyForProvider(actionProvider, settings) : undefined
+
+    return (
+        <div
+            style={{
+                border: `1px solid ${theme.colors.borderOpaque}`,
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '16px',
+            }}
+        >
+            <div
+                style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    marginBottom: '12px',
+                    color: theme.colors.contentPrimary,
+                }}
+            >
+                {t('Per-Action Model')}
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+                <div
+                    style={{
+                        fontSize: '12px',
+                        marginBottom: '4px',
+                        color: theme.colors.contentSecondary,
+                    }}
+                >
+                    {t('Select an action to configure its model')}
+                </div>
+                <Select
+                    size='compact'
+                    searchable={false}
+                    clearable={false}
+                    value={selectedActionId !== undefined ? [{ id: selectedActionId }] : []}
+                    onChange={(params) => {
+                        const id = params.value[0]?.id as number
+                        setSelectedActionId(id)
+                    }}
+                    options={actionOptions}
+                />
+            </div>
+            {selectedAction && (
+                <>
+                    <div style={{ marginBottom: '12px' }}>
+                        <Checkbox
+                            checked={useCustomModel}
+                            onChange={(e) => {
+                                const checked = (e.target as HTMLInputElement).checked
+                                setUseCustomModel(checked)
+                                handleSave(actionProvider, actionModel, checked)
+                            }}
+                        >
+                            <span style={{ fontSize: '13px' }}>{t('Use custom model for this action')}</span>
+                        </Checkbox>
+                    </div>
+                    {useCustomModel ? (
+                        <>
+                            <div style={{ marginBottom: '8px' }}>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        marginBottom: '4px',
+                                        color: theme.colors.contentSecondary,
+                                    }}
+                                >
+                                    {t('Action Provider')}
+                                </div>
+                                <ProviderSelector
+                                    value={actionProvider}
+                                    onChange={(provider) => {
+                                        setActionProvider(provider)
+                                        setActionModel('')
+                                        handleSave(provider, '', true)
+                                    }}
+                                />
+                            </div>
+                            <div style={{ marginBottom: '8px' }}>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        marginBottom: '4px',
+                                        color: theme.colors.contentSecondary,
+                                    }}
+                                >
+                                    {t('Action Model')}
+                                </div>
+                                <APIModelSelector
+                                    currentProvider={actionProvider || settings.provider}
+                                    provider={actionProvider || settings.provider}
+                                    apiKey={apiKey}
+                                    value={isCustomModelName ? CUSTOM_MODEL_ID : actionModel}
+                                    onChange={(model) => {
+                                        if (model === CUSTOM_MODEL_ID) {
+                                            setIsCustomModelName(true)
+                                            setActionModel('')
+                                        } else {
+                                            setIsCustomModelName(false)
+                                            setActionModel(model)
+                                            handleSave(actionProvider, model, true)
+                                        }
+                                    }}
+                                />
+                            </div>
+                            {isCustomModelName && (
+                                <div style={{ marginBottom: '8px' }}>
+                                    <div
+                                        style={{
+                                            fontSize: '12px',
+                                            marginBottom: '4px',
+                                            color: theme.colors.contentSecondary,
+                                        }}
+                                    >
+                                        {t('Custom Model Name')}
+                                    </div>
+                                    <Input
+                                        size='compact'
+                                        placeholder='e.g. claude-sonnet-4-20250514'
+                                        value={actionModel || ''}
+                                        onChange={(e) => {
+                                            const val = (e.target as HTMLInputElement).value
+                                            setActionModel(val)
+                                        }}
+                                        onBlur={() => {
+                                            handleSave(actionProvider, actionModel, true)
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            {actionProvider === 'Claude' && (
+                                <>
+                                    <div style={{ marginBottom: '8px' }}>
+                                        <Checkbox
+                                            checked={actionThinking}
+                                            onChange={(e) => {
+                                                const checked = (e.target as HTMLInputElement).checked
+                                                setActionThinking(checked)
+                                                handleSave(
+                                                    actionProvider,
+                                                    actionModel,
+                                                    true,
+                                                    checked,
+                                                    actionThinkingLevel
+                                                )
+                                            }}
+                                        >
+                                            <span style={{ fontSize: '13px' }}>{t('Enable Extended Thinking')}</span>
+                                        </Checkbox>
+                                    </div>
+                                    {actionThinking && (
+                                        <div style={{ marginBottom: '8px' }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '12px',
+                                                    marginBottom: '4px',
+                                                    color: theme.colors.contentSecondary,
+                                                }}
+                                            >
+                                                {t('Thinking Level')}
+                                            </div>
+                                            <Select
+                                                size='compact'
+                                                searchable={false}
+                                                clearable={false}
+                                                options={[
+                                                    { id: 'low', label: t('Low') },
+                                                    { id: 'medium', label: t('Medium') },
+                                                    { id: 'high', label: t('High') },
+                                                ]}
+                                                value={[{ id: actionThinkingLevel }]}
+                                                onChange={(params) => {
+                                                    const level = params.value[0]?.id as string
+                                                    setActionThinkingLevel(level)
+                                                    handleSave(actionProvider, actionModel, true, actionThinking, level)
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </>
+                    ) : (
+                        <div
+                            style={{
+                                fontSize: '12px',
+                                color: theme.colors.contentTertiary,
+                                fontStyle: 'italic',
+                            }}
+                        >
+                            {t('Using global settings')}
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    )
+}
+
+export function InnerSettings({
+    onSave,
+    showFooter = false,
+    openaiAPIKeyPromotionID,
+    headerPromotionID,
+}: IInnerSettingsProps) {
+    const { data: promotions, mutate: refetchPromotions } = useSWR<IPromotionResponse>('promotions', fetchPromotions)
+
+    useEffect(() => {
+        const timer = setInterval(
+            () => {
+                refetchPromotions()
+            },
+            1000 * 60 * 10
+        )
+        return () => {
+            clearInterval(timer)
+        }
+    }, [refetchPromotions])
+
     const isTauri = utils.isTauri()
+    const registerFocusListener = useCallback(
+        async (handler: () => void): Promise<UnlistenFn | undefined> => {
+            if (!isTauri) {
+                return undefined
+            }
+            try {
+                const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+                const appWindow = WebviewWindow.getCurrent()
+                return await appWindow.listen('tauri://focus', handler)
+            } catch (error) {
+                console.error('Failed to register Tauri focus listener', error)
+                return undefined
+            }
+        },
+        [isTauri]
+    )
     const trackTauriEvent = useCallback(
         async (eventName: string, payload?: Record<string, string | number>) => {
             if (!isTauri) {
@@ -1375,6 +1822,35 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
     )
 
     useEffect(() => {
+        if (!isTauri) {
+            return undefined
+        }
+        let disposed = false
+        let unlisten: UnlistenFn | undefined
+
+        registerFocusListener(() => {
+            refetchPromotions()
+        })
+            .then((cb) => {
+                if (!cb) {
+                    return
+                }
+                if (disposed) {
+                    cb()
+                    return
+                }
+                unlisten = cb
+            })
+            .catch((error) => {
+                console.error('Failed to set promotions focus listener', error)
+            })
+        return () => {
+            disposed = true
+            unlisten?.()
+        }
+    }, [isTauri, refetchPromotions, registerFocusListener])
+
+    useEffect(() => {
         void trackTauriEvent('screen_view', { name: 'Settings' })
     }, [trackTauriEvent])
 
@@ -1382,7 +1858,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
 
     const { refreshThemeType } = useThemeType()
 
-    const { t, i18n } = useTranslation()
+    const { t } = useTranslation()
 
     const [loading, setLoading] = useState(false)
     const { settings, setSettings } = useSettings()
@@ -1404,16 +1880,9 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                 }
                 setValues(settings)
                 setPrevValues(settings)
-
-                // Set i18n language based on settings
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (settings.i18n && (i18n as any).language !== settings.i18n) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    await (i18n as any).changeLanguage(settings.i18n)
-                }
             })()
         }
-    }, [isTauri, settings, i18n])
+    }, [isTauri, settings])
 
     const onChange = useCallback(
         (changes: Partial<ISettings>, values_: ISettings) => {
@@ -1535,6 +2004,8 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
         }
     }, [showFooter])
 
+    const [showBuyMeACoffee, setShowBuyMeACoffee] = useState(false)
+
     const [activeTab, setActiveTab] = useState('general')
 
     const [isScrolled, setIsScrolled] = useState(window.scrollY > 0)
@@ -1602,6 +2073,160 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
         },
     }
 
+    const getI18nPromotionContent = (contentItem: II18nPromotionContentItem) => {
+        let c =
+            contentItem.content[
+                (values.i18n as keyof II18nPromotionContent | undefined) ?? contentItem.fallback_language
+            ]
+        if (!c) {
+            c = contentItem.content[contentItem.fallback_language]
+        }
+        return c
+    }
+
+    const renderI18nPromotionContent = (contentItem: II18nPromotionContentItem) => {
+        if (contentItem.format === 'text') {
+            return <span>{getI18nPromotionContent(contentItem)}</span>
+        }
+
+        if (contentItem.format === 'html') {
+            return (
+                <div
+                    dangerouslySetInnerHTML={{
+                        __html: getI18nPromotionContent(contentItem) ?? '',
+                    }}
+                />
+            )
+        }
+
+        if (contentItem.format === 'markdown') {
+            return <Markdown linkTarget='_blank'>{getI18nPromotionContent(contentItem) ?? ''}</Markdown>
+        }
+
+        return <div />
+    }
+
+    const [disclaimerAgreeLink, setDisclaimerAgreeLink] = useState<string>()
+    const [disclaimerPromotion, setDisclaimerPromotion] = useState<IPromotionItem>()
+
+    const [openaiAPIKeyPromotion, setOpenaiAPIKeyPromotion] = useState<IPromotionItem>()
+
+    useEffect(() => {
+        let disposed = false
+        let unlisten: UnlistenFn | undefined
+        if (openaiAPIKeyPromotionID) {
+            setOpenaiAPIKeyPromotion(promotions?.openai_api_key?.find((item) => item.id === openaiAPIKeyPromotionID))
+        } else {
+            choicePromotionItem(promotions?.openai_api_key).then((item) => {
+                if (!disposed) {
+                    setOpenaiAPIKeyPromotion(item)
+                }
+            })
+            if (isTauri) {
+                registerFocusListener(() => {
+                    choicePromotionItem(promotions?.openai_api_key).then((item) => {
+                        if (!disposed) {
+                            setOpenaiAPIKeyPromotion(item)
+                        }
+                    })
+                })
+                    .then((cb) => {
+                        if (!cb) {
+                            return
+                        }
+                        if (disposed) {
+                            cb()
+                            return
+                        }
+                        unlisten = cb
+                    })
+                    .catch((error) => {
+                        console.error('Failed to set OpenAI promotion focus listener', error)
+                    })
+            }
+        }
+        return () => {
+            disposed = true
+            unlisten?.()
+        }
+    }, [isTauri, openaiAPIKeyPromotionID, promotions?.openai_api_key, registerFocusListener])
+
+    const [headerPromotion, setHeaderPromotion] = useState<IPromotionItem>()
+
+    useEffect(() => {
+        let disposed = false
+        let unlisten: UnlistenFn | undefined
+        if (headerPromotionID) {
+            setHeaderPromotion(promotions?.settings_header?.find((item) => item.id === headerPromotionID))
+        } else {
+            choicePromotionItem(promotions?.settings_header).then((item) => {
+                if (!disposed) {
+                    setHeaderPromotion(item)
+                }
+            })
+            if (isTauri) {
+                registerFocusListener(() => {
+                    choicePromotionItem(promotions?.settings_header).then((item) => {
+                        if (!disposed) {
+                            setHeaderPromotion(item)
+                        }
+                    })
+                })
+                    .then((cb) => {
+                        if (!cb) {
+                            return
+                        }
+                        if (disposed) {
+                            cb()
+                            return
+                        }
+                        unlisten = cb
+                    })
+                    .catch((error) => {
+                        console.error('Failed to set header promotion focus listener', error)
+                    })
+            }
+        }
+        return () => {
+            disposed = true
+            unlisten?.()
+        }
+    }, [headerPromotionID, isTauri, promotions?.settings_header, registerFocusListener])
+
+    const { promotionShowed: openaiAPIKeyPromotionShowed, setPromotionShowed: setOpenaiAPIKeyPromotionShowed } =
+        usePromotionShowed(openaiAPIKeyPromotion)
+
+    const { setPromotionShowed: setHeaderPromotionShowed } = usePromotionShowed(headerPromotion)
+
+    useEffect(() => {
+        setHeaderPromotionShowed(true)
+    }, [setHeaderPromotionShowed])
+
+    const {
+        promotionNeverDisplay: headerPromotionNeverDisplay,
+        setPromotionNeverDisplay: setHeaderPromotionNeverDisplay,
+    } = usePromotionNeverDisplay(headerPromotion)
+
+    const isOpenAI = values.provider === 'OpenAI'
+
+    useEffect(() => {
+        if (isOpenAI) {
+            setOpenaiAPIKeyPromotionShowed(true)
+        }
+    }, [setOpenaiAPIKeyPromotionShowed, isOpenAI])
+
+    useEffect(() => {
+        if (isOpenAI && openaiAPIKeyPromotion) {
+            void trackTauriEvent('promotion_view', { id: openaiAPIKeyPromotion.id })
+        }
+    }, [isOpenAI, openaiAPIKeyPromotion, trackTauriEvent])
+
+    useEffect(() => {
+        if (disclaimerPromotion?.id) {
+            void trackTauriEvent('promotion_disclaimer_view', { id: disclaimerPromotion.id })
+        }
+    }, [disclaimerPromotion?.id, trackTauriEvent])
+
     console.debug('render settings')
 
     return (
@@ -1662,6 +2287,24 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                             </a>
                         ) : null}
                     </h2>
+                    <div
+                        style={{
+                            flexGrow: 1,
+                        }}
+                    />
+                    <div>
+                        <Button
+                            kind='secondary'
+                            size='mini'
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                setShowBuyMeACoffee(true)
+                                void trackTauriEvent('buy_me_a_coffee_clicked')
+                            }}
+                        >
+                            {'❤️  ' + t('Buy me a coffee')}
+                        </Button>
+                    </div>
                 </div>
                 <Tabs
                     overrides={tabsOverrides}
@@ -1724,6 +2367,73 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                     />
                 </Tabs>
             </nav>
+            {headerPromotion && !headerPromotionNeverDisplay && (
+                <div
+                    className={styles.headerPromotion}
+                    onClick={(e) => {
+                        if ((e.target as HTMLElement).tagName === 'A') {
+                            const href = (e.target as HTMLAnchorElement).href
+                            if (href && href.startsWith('http')) {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setDisclaimerPromotion(headerPromotion)
+                                setDisclaimerAgreeLink(href)
+                            }
+                        }
+                    }}
+                >
+                    <Notification
+                        overrides={{
+                            Body: {
+                                style: {
+                                    width: 'auto',
+                                    fontSize: '12px',
+                                    lineHeight: '1.6',
+                                    marginTop: '10px',
+                                    marginBottom: '0px',
+                                    paddingLeft: '14px',
+                                    paddingRight: '8px',
+                                    paddingTop: '6px',
+                                    paddingBottom: '6px',
+                                    color: theme.colors.contentPrimary,
+                                },
+                            },
+                        }}
+                        closeable={headerPromotion.can_never_display}
+                        onClose={() => {
+                            setHeaderPromotionNeverDisplay(true)
+                        }}
+                    >
+                        {renderI18nPromotionContent(headerPromotion.promotion)}
+                    </Notification>
+                </div>
+            )}
+            {!isDesktopApp && (
+                <div
+                    style={{
+                        padding: '20px 25px 0px 25px',
+                        color: theme.colors.contentPrimary,
+                    }}
+                >
+                    {t(
+                        'It is recommended to download the desktop application of NextAI Translator to enjoy the wonderful experience of word translation in all software!'
+                    )}{' '}
+                    <a
+                        target='_blank'
+                        href={
+                            values?.i18n?.toLowerCase().includes('zh')
+                                ? 'https://github.com/nextai-translator/nextai-translator/blob/main/README-CN.md#%E5%AE%89%E8%A3%85'
+                                : 'https://github.com/nextai-translator/nextai-translator#installation'
+                        }
+                        rel='noreferrer'
+                        style={{
+                            color: theme.colors.linkText,
+                        }}
+                    >
+                        {t('Download Link')}
+                    </a>
+                </div>
+            )}
             <Form
                 autoComplete='off'
                 autoCapitalize='off'
@@ -1757,6 +2467,16 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                                     }}
                                 >
                                     {t('Default service provider')}
+                                    {openaiAPIKeyPromotion !== undefined && !openaiAPIKeyPromotionShowed && (
+                                        <div
+                                            style={{
+                                                width: '0.45rem',
+                                                height: '0.45rem',
+                                                borderRadius: '50%',
+                                                backgroundColor: theme.colors.warning300,
+                                            }}
+                                        />
+                                    )}
                                 </div>
                             }
                             required
@@ -1777,7 +2497,9 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                                 ) : undefined
                             }
                         >
-                            <ProviderSelector />
+                            <ProviderSelector
+                                hasPromotion={openaiAPIKeyPromotion !== undefined && !openaiAPIKeyPromotionShowed}
+                            />
                         </FormItem>
                         <div
                             style={{
@@ -1950,6 +2672,18 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                                     required={values.provider === 'Claude' && values.claudeAPIModel === CUSTOM_MODEL_ID}
                                 >
                                     <Input autoComplete='off' size='compact' />
+                                </FormItem>
+                            </div>
+                            <FormItem name='claudeThinking' label={t('Enable Extended Thinking')}>
+                                <MyCheckbox onBlur={onBlur} />
+                            </FormItem>
+                            <div
+                                style={{
+                                    display: values.claudeThinking ? 'block' : 'none',
+                                }}
+                            >
+                                <FormItem name='claudeThinkingLevel' label={t('Thinking Level')}>
+                                    <ThinkingLevelSelector onBlur={onBlur} />
                                 </FormItem>
                             </div>
                             <FormItem
@@ -2232,10 +2966,54 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                                                 'to get your API Key. You can separate multiple API Keys with English commas to achieve quota doubling and load balancing.'
                                             )}
                                         </div>
+                                        {openaiAPIKeyPromotion && (
+                                            <div className={styles.promotion}>
+                                                <div
+                                                    onClick={(e) => {
+                                                        if ((e.target as HTMLElement).tagName === 'A') {
+                                                            const href = (e.target as HTMLAnchorElement).href
+                                                            if (href && href.startsWith('http')) {
+                                                                e.preventDefault()
+                                                                e.stopPropagation()
+                                                                setDisclaimerPromotion(openaiAPIKeyPromotion)
+                                                                setDisclaimerAgreeLink(href)
+                                                            }
+                                                        }
+                                                    }}
+                                                >
+                                                    {renderI18nPromotionContent(openaiAPIKeyPromotion.promotion)}
+                                                </div>
+                                                {openaiAPIKeyPromotion.configuration_doc_link && (
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            flexDirection: 'row',
+                                                            alignItems: 'center',
+                                                            gap: 3,
+                                                        }}
+                                                    >
+                                                        <IoIosHelpCircleOutline size={12} />
+                                                        <a
+                                                            href={openaiAPIKeyPromotion.configuration_doc_link}
+                                                            target='_blank'
+                                                            rel='noreferrer'
+                                                        >
+                                                            {t('How to Use')}
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 }
                             >
-                                <Input type='password' size='compact' name='apiKey' onBlur={onBlur} />
+                                <Input
+                                    autoFocus={!openaiAPIKeyPromotion}
+                                    type='password'
+                                    size='compact'
+                                    name='apiKey'
+                                    onBlur={onBlur}
+                                />
                             </FormItem>
                             <FormItem
                                 name='noModelsAPISupport'
@@ -2469,6 +3247,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         <FormItem name='defaultTranslateMode' label={t('Default Action')}>
                             <TranslateModeSelector onBlur={onBlur} />
                         </FormItem>
+                        <PerActionModelConfig settings={values} />
                         <FormItem name='defaultTargetLanguage' label={t('Default target language')}>
                             <LanguageSelector onBlur={onBlur} />
                         </FormItem>
@@ -2566,6 +3345,15 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                             }}
                             name='automaticCheckForUpdates'
                             label={t('Automatic check for updates')}
+                        >
+                            <MyCheckbox onBlur={onBlur} />
+                        </FormItem>
+                        <FormItem
+                            style={{
+                                display: isDesktopApp ? 'block' : 'none',
+                            }}
+                            name='disableCollectingStatistics'
+                            label={t('disable collecting statistics')}
                         >
                             <MyCheckbox onBlur={onBlur} />
                         </FormItem>
@@ -2704,6 +3492,89 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                     }}
                 />
             )}
+            <Modal
+                isOpen={showBuyMeACoffee}
+                onClose={() => setShowBuyMeACoffee(false)}
+                closeable
+                size='auto'
+                autoFocus
+                animate
+            >
+                <ModalHeader
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                    }}
+                >
+                    {'❤️  ' + t('Buy me a coffee')}
+                </ModalHeader>
+                <ModalBody>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 10,
+                        }}
+                    >
+                        <div>{t('If you find this tool helpful, you can buy me a cup of coffee.')}</div>
+                        <div>
+                            <img width='330' src={wechat} />
+                        </div>
+                        <div>
+                            <img width='330' src={alipay} />
+                        </div>
+                    </div>
+                </ModalBody>
+            </Modal>
+            <Modal
+                isOpen={!!disclaimerPromotion}
+                onClose={() => setDisclaimerPromotion(undefined)}
+                closeable
+                size='auto'
+                autoFocus
+                animate
+            >
+                <ModalHeader>{t('Disclaimer')}</ModalHeader>
+                <ModalBody className={styles.disclaimer}>
+                    {disclaimerPromotion ? renderI18nPromotionContent(disclaimerPromotion.disclaimer) : ''}
+                </ModalBody>
+                <ModalFooter>
+                    <ModalButton
+                        size='compact'
+                        kind='tertiary'
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setDisclaimerPromotion(undefined)
+                        }}
+                    >
+                        {t('Disagree')}
+                    </ModalButton>
+                    <ModalButton
+                        size='compact'
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            if (isTauri) {
+                                void trackTauriEvent('promotion_clicked', { id: openaiAPIKeyPromotion?.id ?? '' })
+                                if (disclaimerAgreeLink) {
+                                    void import('@tauri-apps/plugin-shell')
+                                        .then(({ open }) => open(disclaimerAgreeLink))
+                                        .catch((error) => {
+                                            console.error('Failed to open disclaimer link', error)
+                                        })
+                                }
+                            } else {
+                                window.open(disclaimerAgreeLink)
+                            }
+                        }}
+                    >
+                        {t('Agree and continue')}
+                    </ModalButton>
+                </ModalFooter>
+            </Modal>
         </div>
     )
 }

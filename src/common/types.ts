@@ -143,4 +143,6 @@ export interface ISettings {
     uiFontSize: number
     iconSize: number
     noModelsAPISupport: boolean
+    claudeThinking: boolean
+    claudeThinkingLevel: 'low' | 'medium' | 'high'
 }
