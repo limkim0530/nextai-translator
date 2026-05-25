@@ -84,8 +84,8 @@ export class Gemini extends AbstractEngine {
         const thinkingConfig = isGemmaModel
             ? undefined
             : /-pro($|[-:])/i.test(model)
-              ? { thinkingBudget: -1 } // dynamic thinking
-              : { thinkingBudget: 0 }
+            ? { thinkingBudget: -1 } // dynamic thinking
+            : { thinkingBudget: 0 }
 
         const body = {
             contents: [
