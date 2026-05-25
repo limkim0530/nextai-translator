@@ -76,11 +76,16 @@ export class Gemini extends AbstractEngine {
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36 Edg/91.0.864.41',
         }
 
+        // Gemma models do not support the thinking budget parameter at all
+        const isGemmaModel = /gemma/i.test(model)
+
         // 2.5 Pro cannot disable thinking: remove 0 or use -1
         // https://ai.google.dev/gemini-api/docs/thinking#set-budget
-        const thinkingConfig = /-pro($|[-:])/i.test(model)
-            ? { thinkingBudget: -1 } // dynamic thinking
-            : { thinkingBudget: 0 }
+        const thinkingConfig = isGemmaModel
+            ? undefined
+            : /-pro($|[-:])/i.test(model)
+              ? { thinkingBudget: -1 } // dynamic thinking
+              : { thinkingBudget: 0 }
 
         const body = {
             contents: [
@@ -95,7 +100,7 @@ export class Gemini extends AbstractEngine {
             ],
             safetySettings: SAFETY_SETTINGS,
             generationConfig: {
-                thinkingConfig,
+                ...(thinkingConfig !== undefined && { thinkingConfig }),
             },
         }
 
