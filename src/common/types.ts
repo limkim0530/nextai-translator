@@ -121,6 +121,7 @@ export interface ISettings {
     ollamaAPIModel: string
     ollamaCustomModelName: string
     ollamaModelLifetimeInMemory: string
+    thinkingEnabled: boolean
     groqAPIURL: string
     groqAPIURLPath: string
     groqAPIModel: string
@@ -145,4 +146,5 @@ export interface ISettings {
     noModelsAPISupport: boolean
     claudeThinking: boolean
     claudeThinkingLevel: 'low' | 'medium' | 'high'
+    useCompactLookup?: boolean
 }
