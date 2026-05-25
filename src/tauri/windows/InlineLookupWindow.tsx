@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { listen, type Event, type UnlistenFn } from '@tauri-apps/api/event'
 import { InlineLookup } from '../../common/components/InlineLookup'
-import { setupAnalysis } from '../../common/analysis'
 import { commands } from '../bindings'
 import '../../common/i18n.js'
 import { useTheme } from '../../common/hooks/useTheme'
@@ -21,10 +20,6 @@ export function InlineLookupWindow() {
     const [translatedText, setTranslatedText] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const lastTextRef = useRef('')
-
-    useEffect(() => {
-        setupAnalysis()
-    }, [])
 
     useEffect(() => {
         document.body.style.margin = '0'
