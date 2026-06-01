@@ -3067,6 +3067,18 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         >
                             <HotkeyRecorder onBlur={onBlur} testId='ocr-hotkey-recorder' />
                         </FormItem>
+                        <FormItem
+                            style={{
+                                display: isDesktopApp ? 'block' : 'none',
+                            }}
+                            name='quickTranslatorHotkey'
+                            label={t('Quick Translator Hotkey')}
+                            caption={t(
+                                'Open a non-activating panel that auto-detects the word or sentence you are reading.'
+                            )}
+                        >
+                            <HotkeyRecorder onBlur={onBlur} testId='quick-translator-hotkey-recorder' />
+                        </FormItem>
                     </div>
                 </div>
                 <div
