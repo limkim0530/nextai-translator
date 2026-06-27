@@ -1488,12 +1488,9 @@ function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
                     thinkingLevel: (thinkingLevel ?? actionThinkingLevel) as 'low' | 'medium' | 'high',
                 })
             } else {
-                // Explicitly clear per-action overrides
+                // Explicitly clear per-action overrides using clearFields
                 await actionService.update(selectedAction, {
-                    provider: undefined,
-                    apiModel: undefined,
-                    thinking: undefined,
-                    thinkingLevel: undefined,
+                    clearFields: ['provider', 'apiModel', 'thinking', 'thinkingLevel'],
                 })
             }
         },

@@ -28,6 +28,7 @@ export interface IUpdateActionOption {
     apiModel?: string
     thinking?: boolean
     thinkingLevel?: 'low' | 'medium' | 'high'
+    clearFields?: (keyof Action)[]
 }
 
 export interface IActionInternalService {
@@ -91,6 +92,13 @@ class ActionInternalService implements IActionInternalService {
                 ...action,
                 ...opt,
                 updatedAt: now,
+            }
+            if (opt.clearFields) {
+                opt.clearFields.forEach((field) => {
+                    delete newAction[field]
+                })
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                delete (newAction as any).clearFields
             }
             // Use put() instead of update() so that undefined values properly
             // clear fields (Dexie's update() silently ignores undefined properties)
