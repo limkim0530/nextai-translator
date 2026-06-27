@@ -8,7 +8,6 @@ import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '../../common/components/ErrorFallback'
 import { GlobalSuspense } from '../../common/components/GlobalSuspense'
 import { QuickTranslator, AxContext } from '../../common/components/QuickTranslator'
-import { setupAnalysis } from '../../common/analysis'
 import { useTheme } from '../../common/hooks/useTheme'
 import { PREFIX } from '../../common/constants'
 import { commands } from '../bindings'
@@ -22,7 +21,6 @@ export function QuickTranslatorWindow() {
     const { theme } = useTheme()
 
     useEffect(() => {
-        setupAnalysis()
         document.body.style.margin = '0'
         document.body.style.background = 'transparent'
     }, [])
