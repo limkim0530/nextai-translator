@@ -40,6 +40,18 @@
 
 </p>
 
+<h2 align="center">❤️ 赞助商</h2>
+
+<p align="center">
+  <a href="https://teamorouter.com/?utm_source=nextai_translator&amp;utm_medium=referral&amp;utm_campaign=ai_directory" target="_blank">
+    <img src="docs/sponsors/teamorouter.png" alt="TeamoRouter — Agent-Native LLM Router" width="100%" />
+  </a>
+</p>
+
+<p>
+  TeamoRouter 是一款面向企业与专业用户的 Agentic LLM 统一网关，无需订阅。你可以在数百家一方及经过甄选的三方供应商（OpenAI、Claude、Gemini、AWS Bedrock）上运行 Claude Code、Codex 等热门 Agent，最高可省 90%。不同于那些靠轮换账号池、进而拖垮 prompt 缓存并悄悄替换为更弱模型的普通中转，TeamoRouter 强制保证 100% 的 Agent 协议兼容、缓存命中率校验以及完整的 token 级来源可追溯，从而实现接近 100% 的缓存命中率、毫秒级对齐的 TTFT 以及 99.5%+ 的 SLA。目前它已在 AskManyAI 为数百万用户每天处理数百亿 tokens。<a href="https://teamorouter.com/?utm_source=nextai_translator&amp;utm_medium=referral&amp;utm_campaign=ai_directory" target="_blank">点击这里开始使用 TeamoRouter</a>
+</p>
+
 # 为啥要造这个轮子？
 
 我开发了一个 Bob 的插件 [bob-plugin-nextai-translator](https://github.com/yetone/bob-plugin-nextai-translator) 使用 ChatGPT API 在 macOS 上进行全局划词翻译。
