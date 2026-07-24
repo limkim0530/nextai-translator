@@ -16,6 +16,11 @@
     "Inserted into previous input": "Inserted into previous input",
     "Failed to insert into previous input": "Failed to insert into previous input",
     "Speak": "Speak",
+    "Definition of {{word}}": "Definition of {{word}}",
+    "Open full definition": "Open full definition",
+    "Preview unavailable": "Preview unavailable",
+    "No concise definition found": "No concise definition found",
+    "Source: Wiktionary": "Source: Wiktionary",
     "Upload an image for OCR translation": "Upload an image for OCR translation",
     "Default service provider": "Default service provider",
     "Default translate mode": "Default translate mode",
@@ -232,5 +237,13 @@
     "Low": "Low",
     "Medium": "Medium",
     "High": "High",
-    "Enable": "Enable"
+    "Enable": "Enable",
+    "MeloTTS Chinese voice": "MeloTTS Chinese voice",
+    "Kokoro English voice": "Kokoro English voice",
+    "Downloading {{voice}}": "Downloading {{voice}}",
+    "Installing {{voice}}": "Installing {{voice}}",
+    "Download progress for {{voice}}": "Download progress for {{voice}}",
+    "Verifying and extracting…": "Verifying and extracting…",
+    "{{voice}} is ready": "{{voice}} is ready",
+    "Failed to download {{voice}}": "Failed to download {{voice}}"
 }

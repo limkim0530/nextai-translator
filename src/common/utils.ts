@@ -112,6 +112,8 @@ const settingKeys: Record<keyof ISettings, number> = {
     deepSeekAPIModel: 1,
     cerebrasAPIKey: 1,
     cerebrasAPIModel: 1,
+    teamoRouterAPIKey: 1,
+    teamoRouterAPIModel: 1,
     fontSize: 1,
     uiFontSize: 1,
     iconSize: 1,
@@ -170,6 +172,11 @@ export async function getSettings(): Promise<ISettings> {
     }
     if (!settings.themeType) {
         settings.themeType = 'followTheSystem'
+    }
+    if (settings.tts?.provider === 'EdgeTTS') {
+        // The Edge TTS public endpoint no longer works, so route users who
+        // had selected it onto the local engine.
+        settings.tts = { ...settings.tts, provider: 'LocalTTS' }
     }
     if (settings.provider === 'Azure') {
         if (!settings.azureAPIKeys) {
@@ -579,6 +586,8 @@ export function getAPIKeyForProvider(provider: string, settings: ISettings): str
             return settings.deepSeekAPIKey
         case 'Cerebras':
             return settings.cerebrasAPIKey
+        case 'TeamoRouter':
+            return settings.teamoRouterAPIKey
         case 'Moonshot':
             return settings.moonshotAPIKey
         case 'MiniMax':

@@ -67,6 +67,7 @@ export function getManifest(browser: 'firefox' | 'chromium') {
             'https://*.chatglm.cn/',
             'https://*.cohere.ai/',
             'https://*.deepseek.com/',
+            'https://api.dictionaryapi.dev/',
         ],
     }
 

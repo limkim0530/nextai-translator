@@ -3,7 +3,7 @@ import _ from 'underscore'
 import { Tabs, Tab, StyledTabList, StyledTabPanel } from 'baseui-sd/tabs-motion'
 import icon from '../assets/images/icon-large.png'
 import beams from '../assets/images/beams.jpg'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import * as utils from '../utils'
 import { Client as Styletron } from 'styletron-engine-atomic'
 import { Provider as StyletronProvider } from 'styletron-react'
@@ -29,6 +29,7 @@ import { RiDeleteBin5Line } from 'react-icons/ri'
 import { IoIosSave, IoMdAdd } from 'react-icons/io'
 import { TTSProvider } from '../tts/types'
 import { fetchEdgeVoices } from '../tts/edge-tts'
+import { fetchLocalVoices } from '../tts/local-tts'
 import { useThemeType } from '../hooks/useThemeType'
 import { Slider } from 'baseui-sd/slider'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -47,6 +48,7 @@ import useSWR from 'swr'
 
 import { Skeleton } from 'baseui-sd/skeleton'
 import { SpeakerIcon } from './SpeakerIcon'
+import Toaster from './Toaster'
 import { RxSpeakerLoud } from 'react-icons/rx'
 
 import { Textarea } from 'baseui-sd/textarea'
@@ -328,7 +330,9 @@ const ttsProviderOptions: {
     label: string
     id: TTSProvider
 }[] = [
-    { label: 'Edge TTS', id: 'EdgeTTS' },
+    { label: 'Local TTS (MeloTTS / Kokoro)', id: 'LocalTTS' },
+    // Edge TTS is hidden while its public endpoint is unusable; stored
+    // 'EdgeTTS' selections are migrated to 'LocalTTS' in getSettings.
     { label: 'System Default', id: 'WebSpeech' },
 ]
 
@@ -346,6 +350,11 @@ function TTSVoicesSettings({ value, onChange, onBlur }: ITTSVoicesSettingsProps)
 
     const provider = value?.provider ?? defaultTTSProvider
 
+    const { data: localVoices, isLoading: isLocalVoicesLoading } = useSWR(
+        provider === 'LocalTTS' ? 'localTTSVoices' : null,
+        fetchLocalVoices
+    )
+
     const { data: edgeVoices, isLoading: isEdgeVoicesLoading } = useSWR(
         provider === 'EdgeTTS' ? 'edgeVoices' : null,
         fetchEdgeVoices
@@ -358,10 +367,13 @@ function TTSVoicesSettings({ value, onChange, onBlur }: ITTSVoicesSettingsProps)
         }
     )
 
-    const isVoicesLoading = isEdgeVoicesLoading || isWebSpeechVoicesLoading
+    const isVoicesLoading = isLocalVoicesLoading || isEdgeVoicesLoading || isWebSpeechVoicesLoading
 
     useEffect(() => {
         switch (provider) {
+            case 'LocalTTS':
+                setSupportedVoices(localVoices ?? [])
+                break
             case 'EdgeTTS':
                 setSupportedVoices(edgeVoices ?? [])
                 break
@@ -372,7 +384,7 @@ function TTSVoicesSettings({ value, onChange, onBlur }: ITTSVoicesSettingsProps)
                 setSupportedVoices(edgeVoices ?? [])
                 break
         }
-    }, [edgeVoices, provider, webSpeechVoices])
+    }, [edgeVoices, localVoices, provider, webSpeechVoices])
 
     const getLangOptions = useCallback(
         (lang: string) => {
@@ -531,7 +543,7 @@ function TTSVoicesSettings({ value, onChange, onBlur }: ITTSVoicesSettingsProps)
                     clearable={false}
                     searchable={false}
                     options={ttsProviderOptions}
-                    value={[{ id: value?.provider ?? 'EdgeTTS' }]}
+                    value={[{ id: value?.provider ?? defaultTTSProvider }]}
                     onChange={({ option }) => handleChangeProvider(option?.id as TTSProvider)}
                     onBlur={onBlur}
                 />
@@ -743,6 +755,7 @@ function Ii18nSelector({ value, onChange, onBlur }: Ii18nSelectorProps) {
         { label: '简体中文', id: 'zh-Hans' },
         { label: '繁體中文', id: 'zh-Hant' },
         { label: '日本語', id: 'ja' },
+        { label: '한국어', id: 'ko' },
         { label: 'ไทย', id: 'th' },
         { label: 'Türkçe', id: 'tr' },
     ]
@@ -1344,6 +1357,7 @@ export function ProviderSelector({ value, onChange }: IProviderSelectorProps) {
     const options = utils.isDesktopApp()
         ? ([
               { label: 'OpenAI', id: 'OpenAI' },
+              { label: 'TeamoRouter', id: 'TeamoRouter' },
               { label: 'Claude', id: 'Claude' },
               { label: `Kimi (${t('Free')})`, id: 'Kimi' },
               { label: `${t('ChatGLM')} (${t('Free')})`, id: 'ChatGLM' },
@@ -1363,6 +1377,7 @@ export function ProviderSelector({ value, onChange }: IProviderSelectorProps) {
           }[])
         : ([
               { label: 'OpenAI', id: 'OpenAI' },
+              { label: 'TeamoRouter', id: 'TeamoRouter' },
               { label: 'Claude', id: 'Claude' },
               { label: `Kimi (${t('Free')})`, id: 'Kimi' },
               { label: `${t('ChatGLM')} (${t('Free')})`, id: 'ChatGLM' },
@@ -2837,6 +2852,45 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                                     provider='Cerebras'
                                     currentProvider={values.provider}
                                     apiKey={values.cerebrasAPIKey}
+                                    onBlur={onBlur}
+                                />
+                            </FormItem>
+                        </div>
+                        <div
+                            style={{
+                                display: values.provider === 'TeamoRouter' ? 'block' : 'none',
+                            }}
+                        >
+                            <FormItem
+                                required={values.provider === 'TeamoRouter'}
+                                name='teamoRouterAPIKey'
+                                label='TeamoRouter API Key'
+                                caption={
+                                    <div>
+                                        {t('Go to the')}{' '}
+                                        <a
+                                            target='_blank'
+                                            href='https://teamorouter.com/?utm_source=nextai_translator&utm_medium=referral&utm_campaign=ai_directory'
+                                            rel='noreferrer'
+                                            style={linkStyle}
+                                        >
+                                            TeamoRouter Page
+                                        </a>{' '}
+                                        {t('to get your API Key.')}
+                                    </div>
+                                }
+                            >
+                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
+                            </FormItem>
+                            <FormItem
+                                name='teamoRouterAPIModel'
+                                label={t('API Model')}
+                                required={values.provider === 'TeamoRouter'}
+                            >
+                                <APIModelSelector
+                                    provider='TeamoRouter'
+                                    currentProvider={values.provider}
+                                    apiKey={values.teamoRouterAPIKey}
                                     onBlur={onBlur}
                                 />
                             </FormItem>
