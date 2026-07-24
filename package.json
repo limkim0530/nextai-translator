@@ -15,6 +15,7 @@
     "build-browser-extension": "tsc && make build-browser-extension",
     "build-chrome": "vite build -c vite.config.chromium.ts",
     "build-userscript": "make build-userscript",
+    "build-userscript-local": "pnpm vite build -c vite.config.userscript.ts",
     "clean": "make clean",
     "test": "vitest test",
     "test:e2e": "playwright test",

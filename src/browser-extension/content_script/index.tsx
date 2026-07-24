@@ -281,8 +281,9 @@ export async function bindHotKey(hotkey_: string | undefined) {
 if (utils.isFirefox()) {
     // workaround for `"then" is read-only` error caused by dexie in firefox
     const nativeP = crypto.subtle.digest('SHA-512', new Uint8Array([0]))
+    const originalThen = Promise.prototype.then
     Object.defineProperty(Object.getPrototypeOf(nativeP), 'then', {
-        get: () => Promise.prototype.then,
+        get: () => originalThen,
         set: () => {
             // do nothing
         },

@@ -78,14 +78,22 @@ export class Gemini extends AbstractEngine {
 
         // Gemma models do not support the thinking budget parameter at all
         const isGemmaModel = /gemma/i.test(model)
+        const isGemini3OrLatest = /(gemini-3|-latest)/i.test(model)
 
         // 2.5 Pro cannot disable thinking: remove 0 or use -1
-        // https://ai.google.dev/gemini-api/docs/thinking#set-budget
-        const thinkingConfig = isGemmaModel
-            ? undefined
-            : /-pro($|[-:])/i.test(model)
-            ? { thinkingBudget: -1 } // dynamic thinking
-            : { thinkingBudget: 0 }
+        // Gemini 3.x uses thinkingLevel instead of thinkingBudget
+        let thinkingConfig = undefined
+        if (!isGemmaModel) {
+            if (req.thinkingBudget && req.thinkingBudget > 0 && !isGemini3OrLatest) {
+                thinkingConfig = { thinkingBudget: req.thinkingBudget }
+            } else if (isGemini3OrLatest) {
+                thinkingConfig = { thinkingLevel: 'minimal' }
+            } else {
+                thinkingConfig = /-pro($|[-:])/i.test(model)
+                    ? { thinkingBudget: -1 } // dynamic thinking
+                    : { thinkingBudget: 0 } // disable thinking
+            }
+        }
 
         const body = {
             contents: [
