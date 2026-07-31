@@ -1020,6 +1020,24 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         engineModel: undefined,
     })
 
+    const translateDepsRef = useRef(translateDeps)
+    useEffect(() => {
+        translateDepsRef.current = translateDeps
+    }, [translateDeps])
+
+    // Streamed tokens are buffered and flushed on a timer: re-rendering the
+    // whole result on every token is a >100ms long task for long texts,
+    // which freezes the UI and makes clicks unresponsive.
+    const streamBufferRef = useRef('')
+    const streamFlushTimerRef = useRef<number | null>(null)
+    const resetStreamBuffer = useCallback(() => {
+        streamBufferRef.current = ''
+        if (streamFlushTimerRef.current !== null) {
+            window.clearTimeout(streamFlushTimerRef.current)
+            streamFlushTimerRef.current = null
+        }
+    }, [])
+
     const getTranslateDeps = useCallback(
         async function (text: string, action: Action): Promise<typeof translateDeps> {
             const newSourceLang = await detectLang(text)
@@ -1334,6 +1352,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                     actionStr = 'Polishing...'
                 }
                 setActionStr(actionStr)
+                resetStreamBuffer()
                 setTranslatedText('')
                 setErrorMessage('')
                 startLoading()
@@ -1397,17 +1416,30 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                             return
                         }
                         setIsWordMode(message.isWordMode)
-                        setTranslatedText((translatedText) => {
-                            if (message.isFullText) {
-                                return message.content
-                            }
-                            return translatedText + message.content
-                        })
+                        if (message.isFullText) {
+                            resetStreamBuffer()
+                            setTranslatedText(message.content)
+                            return
+                        }
+                        streamBufferRef.current += message.content
+                        if (streamFlushTimerRef.current === null) {
+                            streamFlushTimerRef.current = window.setTimeout(() => {
+                                streamFlushTimerRef.current = null
+                                if (signal.aborted) {
+                                    return
+                                }
+                                const chunk = streamBufferRef.current
+                                streamBufferRef.current = ''
+                                setTranslatedText((translatedText) => translatedText + chunk)
+                            }, 120)
+                        }
                     },
                     onFinish: (reason) => {
+                        const pending = streamBufferRef.current
+                        resetStreamBuffer()
                         afterTranslate(reason)
                         setTranslatedText((translatedText) => {
-                            const result = translatedText
+                            const result = translatedText + pending
                             cache.set(cachedKey, result)
                             void persistHistory(result)
                             return result
@@ -1457,7 +1489,6 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             }
             historyEntryIdRef.current = item.id ?? null
             lastHistoryKeyRef.current = null
-            skipNextTranslateRef.current = true
             setSourceLang(item.sourceLang)
             setTargetLang(item.targetLang)
             setEditableText(item.text)
@@ -1467,19 +1498,24 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             setShowWordbookButtons(false)
             setSelectedWord('')
             setHighlightWords([])
-            setTranslateDeps((prev) => {
-                const nextAction = matchedAction ?? prev.action
-                const providerFromHistory = isProviderValue(item.provider) ? item.provider : undefined
-                return {
-                    ...prev,
-                    text: item.text,
-                    sourceLang: item.sourceLang,
-                    targetLang: item.targetLang,
-                    action: nextAction,
-                    provider: providerFromHistory ?? prev.provider ?? settings.provider,
-                    engineModel: item.engineModel ?? prev.engineModel,
-                }
-            })
+            const prev = translateDepsRef.current
+            const nextAction = matchedAction ?? prev.action
+            const providerFromHistory = isProviderValue(item.provider) ? item.provider : undefined
+            const next = {
+                ...prev,
+                text: item.text,
+                sourceLang: item.sourceLang,
+                targetLang: item.targetLang,
+                action: nextAction,
+                provider: providerFromHistory ?? prev.provider ?? settings.provider,
+                engineModel: item.engineModel ?? prev.engineModel,
+            }
+            // Only arm the skip flag when the deps actually changed: if they
+            // are deep-equal, the translate effect never re-runs, the flag is
+            // never consumed, and it would silently swallow the user's next
+            // submit instead.
+            skipNextTranslateRef.current = JSON.stringify(prev) !== JSON.stringify(next)
+            setTranslateDeps(next)
         },
         [actions, settings.provider, setActivateAction]
     )
@@ -1834,6 +1870,10 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         (e: React.SyntheticEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLTextAreaElement>) => {
             e.preventDefault()
             e.stopPropagation()
+            // An explicit submit must never be swallowed: a leftover skip
+            // flag from a history restore whose deps never re-ran the
+            // translate effect would silently eat this submit.
+            skipNextTranslateRef.current = false
             let action = activateAction
             if (!action) {
                 action = actions?.find((action) => action.mode === 'translate')
@@ -1842,7 +1882,15 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             const text = editorRef.current?.value ?? ''
             if (action) {
                 getTranslateDeps(text, action).then((v) => {
+                    // translateText compares deps deeply, so resubmitting
+                    // unchanged content would not retrigger it; bump the
+                    // translation flag (same mechanism as the Retry button)
+                    // so an explicit submit always runs.
+                    const unchanged = JSON.stringify(translateDepsRef.current) === JSON.stringify(v)
                     setTranslateDeps(v)
+                    if (unchanged) {
+                        forceTranslate()
+                    }
                 })
             }
         },
@@ -2499,9 +2547,17 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                     activateAction?.outputRenderingFormat === 'markdown' ? (
                                                         <>
                                                             <Markdown
-                                                                renderText={renderHoverableText}
+                                                                // Skip per-word hover/phonetic wrapping while
+                                                                // streaming: it multiplies the cost of each
+                                                                // incremental re-render and freezes the UI on
+                                                                // long outputs. The final render restores it.
+                                                                renderText={isLoading ? undefined : renderHoverableText}
                                                                 speechLang={
-                                                                    isWordMode ? sourceLang : targetLang ?? 'en'
+                                                                    isLoading
+                                                                        ? undefined
+                                                                        : isWordMode
+                                                                        ? sourceLang
+                                                                        : targetLang ?? 'en'
                                                                 }
                                                                 speechText={editableText}
                                                                 ttsProvider={settings.tts?.provider}
@@ -2550,22 +2606,26 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                                                 gap: '5px',
                                                                             }}
                                                                         >
-                                                                            <PhoneticText
-                                                                                text={line}
-                                                                                fallbackText={editableText}
-                                                                                highlightRange={lineHighlightRange}
-                                                                                lang={sourceLang}
-                                                                                provider={settings.tts?.provider}
-                                                                                voice={
-                                                                                    settings.tts?.voices?.find(
-                                                                                        (item) =>
-                                                                                            item.lang === sourceLang
-                                                                                    )?.voice
-                                                                                }
-                                                                                rate={settings.tts?.rate}
-                                                                                volume={settings.tts?.volume}
-                                                                                renderText={renderHoverableText}
-                                                                            />
+                                                                            {isLoading ? (
+                                                                                line
+                                                                            ) : (
+                                                                                <PhoneticText
+                                                                                    text={line}
+                                                                                    fallbackText={editableText}
+                                                                                    highlightRange={lineHighlightRange}
+                                                                                    lang={sourceLang}
+                                                                                    provider={settings.tts?.provider}
+                                                                                    voice={
+                                                                                        settings.tts?.voices?.find(
+                                                                                            (item) =>
+                                                                                                item.lang === sourceLang
+                                                                                        )?.voice
+                                                                                    }
+                                                                                    rate={settings.tts?.rate}
+                                                                                    volume={settings.tts?.volume}
+                                                                                    renderText={renderHoverableText}
+                                                                                />
+                                                                            )}
                                                                             {!isLoading && (
                                                                                 <StatefulTooltip
                                                                                     content={
@@ -2595,6 +2655,8 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                                                 </StatefulTooltip>
                                                                             )}
                                                                         </div>
+                                                                    ) : isLoading ? (
+                                                                        line
                                                                     ) : (
                                                                         <PhoneticText
                                                                             text={line}
