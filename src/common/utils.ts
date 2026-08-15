@@ -114,6 +114,8 @@ const settingKeys: Record<keyof ISettings, number> = {
     cerebrasAPIModel: 1,
     teamoRouterAPIKey: 1,
     teamoRouterAPIModel: 1,
+    openRouterAPIKey: 1,
+    openRouterAPIModel: 1,
     fontSize: 1,
     uiFontSize: 1,
     iconSize: 1,
@@ -248,7 +250,7 @@ export async function getSettings(): Promise<ISettings> {
         settings.fontSize = 15
     }
     if (settings.uiFontSize === undefined || settings.uiFontSize === null) {
-        settings.uiFontSize = 12
+        settings.uiFontSize = 14
     }
     if (settings.iconSize === undefined || settings.iconSize === null) {
         settings.iconSize = 15
@@ -453,8 +455,23 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
     if (isTauri()) {
         const id = uuidv4()
         const unlistens: Array<() => void> = []
+        let cleanedUp = false
         const unlisten = () => {
+            cleanedUp = true
             unlistens.forEach((cb) => cb())
+            unlistens.length = 0
+        }
+        // listen() registrations resolve asynchronously and can land AFTER
+        // cleanup already ran (fast failures, aborts) - such listeners used
+        // to leak forever, and every leaked listener is iterated on every
+        // stream chunk of every later request, grinding the whole app down
+        // the longer the session runs.
+        const track = (cb: () => void) => {
+            if (cleanedUp) {
+                cb()
+                return
+            }
+            unlistens.push(cb)
         }
         return await new Promise<void>((resolve, reject) => {
             let isAborted = false
@@ -472,7 +489,7 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
                     onStatusCode?.(event.payload.status)
                 }
             })
-                .then((cb) => unlistens.push(cb))
+                .then(track)
                 .catch((e) => reject(e))
             listen(
                 'fetch-stream-chunk',
@@ -507,9 +524,7 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
                     }
                 }
             )
-                .then((cb) => {
-                    unlistens.push(cb)
-                })
+                .then(track)
                 .catch((e) => {
                     reject(e)
                 })
@@ -520,11 +535,11 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
                     reject(e)
                 })
                 .finally(() => {
-                    if (isAborted) {
-                        return
+                    // Aborted requests must clean up their listeners too.
+                    unlisten()
+                    if (!isAborted) {
+                        resolve()
                     }
-                    unlisten?.()
-                    resolve()
                 })
         })
     }
@@ -588,6 +603,8 @@ export function getAPIKeyForProvider(provider: string, settings: ISettings): str
             return settings.cerebrasAPIKey
         case 'TeamoRouter':
             return settings.teamoRouterAPIKey
+        case 'OpenRouter':
+            return settings.openRouterAPIKey
         case 'Moonshot':
             return settings.moonshotAPIKey
         case 'MiniMax':

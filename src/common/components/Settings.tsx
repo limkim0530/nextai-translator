@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import _ from 'underscore'
 import { Tabs, Tab, StyledTabList, StyledTabPanel } from 'baseui-sd/tabs-motion'
 import icon from '../assets/images/icon-large.png'
@@ -13,6 +13,9 @@ import { createForm } from './Form'
 import { Button, ButtonProps } from 'baseui-sd/button'
 import { TranslateMode, APIModel } from '../translate'
 import { Select, Value, Option, Options } from 'baseui-sd/select'
+import { Combobox } from 'baseui-sd/combobox'
+import ChevronDown from 'baseui-sd/icon/chevron-down'
+import { SpinnerIcon } from './SpinnerIcon'
 import { Checkbox } from 'baseui-sd/checkbox'
 import { LangCode, supportedLanguages } from '../lang'
 import { useRecordHotkeys } from 'react-hotkeys-hook'
@@ -797,9 +800,10 @@ interface APIModelSelectorProps {
 }
 
 interface APIModelOption {
-    label: React.ReactNode
     id: string
-    name?: string
+    label: string
+    name: string
+    description?: string
 }
 
 export function APIModelSelector({
@@ -831,48 +835,16 @@ export function APIModelSelector({
         ;(async () => {
             try {
                 const models = await engine.listModels(apiKey, apiURL)
-                setOptions([
-                    ...models.map((model: IModel) => ({
-                        label: (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 3,
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        fontSize: '14px',
-                                        color: theme.colors.contentPrimary,
-                                    }}
-                                >
-                                    {model.name}
-                                </div>
-                                {model.description && (
-                                    <div
-                                        style={{
-                                            fontSize: '12px',
-                                            color: theme.colors.contentTertiary,
-                                        }}
-                                    >
-                                        {model.description}
-                                    </div>
-                                )}
-                            </div>
-                        ),
+                setOptions(
+                    models.map((model: IModel) => ({
                         id: model.id,
+                        // label lets the creatable machinery detect an exact
+                        // match and skip the redundant "Custom" entry
+                        label: model.id,
                         name: model.name,
-                    })),
-                    ...(engine.supportCustomModel()
-                        ? [
-                              {
-                                  id: CUSTOM_MODEL_ID,
-                                  label: t('Custom'),
-                              },
-                          ]
-                        : []),
-                ])
+                        description: model.description,
+                    }))
+                )
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (e: any) {
                 if (
@@ -898,19 +870,30 @@ export function APIModelSelector({
         theme.colors.contentTertiary,
     ])
 
+    // Once the user has touched the input, never auto-fill again: filling
+    // the default back in the moment the field is cleared makes it
+    // impossible to delete the last character while editing.
+    const userEditedRef = useRef(false)
+    useEffect(() => {
+        userEditedRef.current = false
+    }, [currentProvider, provider])
+
     useEffect(() => {
         if (provider !== currentProvider || options.length === 0) {
             return
         }
-        const optionIDs = options.map((option) => option.id)
-        if (value && optionIDs.includes(value)) {
+        // Only fill in a default when nothing was ever set: the combobox
+        // accepts free-typed model names, so an empty or unlisted value
+        // during editing is legitimate and must not be overridden.
+        if (value || userEditedRef.current) {
             return
         }
+        const optionIDs = options.map((option) => option.id)
         const fallback =
             provider === 'OpenAI' && optionIDs.includes(OPENAI_PREFERRED_DEFAULT_MODEL)
                 ? OPENAI_PREFERRED_DEFAULT_MODEL
                 : optionIDs.find((id) => id !== CUSTOM_MODEL_ID) ?? optionIDs[0]
-        if (fallback && fallback !== value) {
+        if (fallback) {
             onChange?.(fallback)
         }
     }, [currentProvider, onChange, options, provider, value])
@@ -925,37 +908,96 @@ export function APIModelSelector({
                     gap: 4,
                 }}
             >
-                <Select
-                    isLoading={isLoading}
-                    size='compact'
-                    onBlur={onBlur}
-                    searchable={true}
-                    clearable={false}
-                    backspaceRemoves={false}
-                    deleteRemoves={false}
-                    filterOptions={(options, filterValue) => {
-                        if (!filterValue) return options
-                        const filter = filterValue.toLowerCase()
-                        return options.filter((option) => {
-                            const id = (option.id as string)?.toLowerCase() ?? ''
-                            const name = (option.name as string)?.toLowerCase() ?? ''
-                            return id.includes(filter) || name.includes(filter)
-                        })
-                    }}
-                    value={
-                        value
-                            ? [
-                                  {
-                                      id: value,
-                                  },
-                              ]
-                            : undefined
-                    }
-                    onChange={(params) => {
-                        onChange?.(params.value[0].id as APIModel)
-                    }}
-                    options={options}
-                />
+                <div style={{ flexGrow: 1 }}>
+                    <Combobox
+                        size='compact'
+                        value={value ?? ''}
+                        onChange={(nextValue) => {
+                            userEditedRef.current = true
+                            onChange?.(nextValue as APIModel)
+                        }}
+                        onBlur={onBlur}
+                        options={(() => {
+                            const query = (value ?? '').toLowerCase()
+                            if (!query) {
+                                return options
+                            }
+                            const matched = options.filter(
+                                (option) =>
+                                    option.id.toLowerCase().includes(query) || option.name.toLowerCase().includes(query)
+                            )
+                            const exactMatch = options.some((option) => option.id.toLowerCase() === query)
+                            // A picked model or a free-typed name that matches
+                            // nothing should still let the user browse the
+                            // full list when reopening the dropdown.
+                            return matched.length > 0 && !exactMatch ? matched : options
+                        })()}
+                        mapOptionToString={(option: APIModelOption) => option.id}
+                        mapOptionToNode={({ option }: { isSelected: boolean; option: APIModelOption }) => (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 3,
+                                    paddingTop: 4,
+                                    paddingBottom: 4,
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        fontSize: '14px',
+                                        color: theme.colors.contentPrimary,
+                                    }}
+                                >
+                                    {option.name}
+                                </div>
+                                {option.description && (
+                                    <div
+                                        style={{
+                                            fontSize: '12px',
+                                            color: theme.colors.contentTertiary,
+                                        }}
+                                    >
+                                        {option.description}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        listBoxLabel={t('API Model')}
+                        overrides={{
+                            Input: {
+                                props: {
+                                    // A visible dropdown affordance; its click
+                                    // bubbles to the combobox container, which
+                                    // opens the listbox.
+                                    endEnhancer: <ChevronDown size={20} />,
+                                },
+                            },
+                            ListItem: {
+                                style: {
+                                    // The default list item height is fixed and
+                                    // too small for the two-line model entries,
+                                    // making rows overlap.
+                                    height: 'auto',
+                                    paddingTop: '6px',
+                                    paddingBottom: '6px',
+                                },
+                                props: {
+                                    // WebKit reports relatedTarget=null when a
+                                    // non-focusable list item is clicked, so the
+                                    // combobox mistakes the click for an outside
+                                    // blur; the blur-save then races the option
+                                    // click and reverts the picked value. Keep
+                                    // focus in the input instead.
+                                    onMouseDown: (event: React.MouseEvent) => {
+                                        event.preventDefault()
+                                    },
+                                },
+                            },
+                        }}
+                    />
+                </div>
+                {isLoading && <SpinnerIcon size={14} />}
                 <Button
                     size='compact'
                     kind='secondary'
@@ -1358,6 +1400,7 @@ export function ProviderSelector({ value, onChange }: IProviderSelectorProps) {
         ? ([
               { label: 'OpenAI', id: 'OpenAI' },
               { label: 'TeamoRouter', id: 'TeamoRouter' },
+              { label: 'OpenRouter', id: 'OpenRouter' },
               { label: 'Claude', id: 'Claude' },
               { label: `Kimi (${t('Free')})`, id: 'Kimi' },
               { label: `${t('ChatGLM')} (${t('Free')})`, id: 'ChatGLM' },
@@ -1378,6 +1421,7 @@ export function ProviderSelector({ value, onChange }: IProviderSelectorProps) {
         : ([
               { label: 'OpenAI', id: 'OpenAI' },
               { label: 'TeamoRouter', id: 'TeamoRouter' },
+              { label: 'OpenRouter', id: 'OpenRouter' },
               { label: 'Claude', id: 'Claude' },
               { label: `Kimi (${t('Free')})`, id: 'Kimi' },
               { label: `${t('ChatGLM')} (${t('Free')})`, id: 'ChatGLM' },
@@ -1751,6 +1795,15 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
     const [values, setValues] = useState<ISettings>(settings)
     const [prevValues, setPrevValues] = useState<ISettings>(values)
 
+    const valuesRef = useRef(values)
+    useEffect(() => {
+        valuesRef.current = values
+    }, [values])
+    const prevValuesRef = useRef(prevValues)
+    useEffect(() => {
+        prevValuesRef.current = prevValues
+    }, [prevValues])
+
     const [form] = useForm()
 
     useEffect(() => {
@@ -1763,6 +1816,13 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                 if (isTauri) {
                     const { isEnabled: autostartIsEnabled } = await import('@tauri-apps/plugin-autostart')
                     settings.runAtStartup = await autostartIsEnabled()
+                }
+                // A settings refresh (SWR revalidates at arbitrary moments)
+                // must never clobber unsaved in-progress edits: overwriting
+                // `values` here resets the whole form, which reverted a model
+                // picked in the combobox back to its stored value.
+                if (!_.isEqual(valuesRef.current, prevValuesRef.current)) {
+                    return
                 }
                 setValues(settings)
                 setPrevValues(settings)
@@ -2895,6 +2955,45 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                                 />
                             </FormItem>
                         </div>
+                        <div
+                            style={{
+                                display: values.provider === 'OpenRouter' ? 'block' : 'none',
+                            }}
+                        >
+                            <FormItem
+                                required={values.provider === 'OpenRouter'}
+                                name='openRouterAPIKey'
+                                label='OpenRouter API Key'
+                                caption={
+                                    <div>
+                                        {t('Go to the')}{' '}
+                                        <a
+                                            target='_blank'
+                                            href='https://openrouter.ai/settings/keys'
+                                            rel='noreferrer'
+                                            style={linkStyle}
+                                        >
+                                            OpenRouter Page
+                                        </a>{' '}
+                                        {t('to get your API Key.')}
+                                    </div>
+                                }
+                            >
+                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
+                            </FormItem>
+                            <FormItem
+                                name='openRouterAPIModel'
+                                label={t('API Model')}
+                                required={values.provider === 'OpenRouter'}
+                            >
+                                <APIModelSelector
+                                    provider='OpenRouter'
+                                    currentProvider={values.provider}
+                                    apiKey={values.openRouterAPIKey}
+                                    onBlur={onBlur}
+                                />
+                            </FormItem>
+                        </div>
                         <FormItem
                             name='thinkingEnabled'
                             label={t('Enable Thinking')}
@@ -2929,8 +3028,19 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         >
                             <MyCheckbox onBlur={onBlur} />
                         </FormItem>
-                        <FormItem name='fontSize' label={t('Font size')}>
-                            <NumberInput />
+                        <FormItem
+                            name='fontSize'
+                            label={t('Font size')}
+                            caption={t('Controls the font size of the input box and the translation text.')}
+                        >
+                            <NumberInput min={8} max={40} step={1} />
+                        </FormItem>
+                        <FormItem
+                            name='uiFontSize'
+                            label={t('UI font size')}
+                            caption={t('Controls the font size of the app interface (toolbar, menus, labels).')}
+                        >
+                            <NumberInput min={8} max={24} step={1} />
                         </FormItem>
                         <FormItem
                             name='alwaysShowIcons'
