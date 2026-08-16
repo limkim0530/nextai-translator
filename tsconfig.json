@@ -13,6 +13,7 @@
         "rootDir": ".",
         "outDir": "dist/js",
         "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
         "noEmit": true,
         "noEmitOnError": true,
         "jsx": "react-jsx",
@@ -23,5 +24,5 @@
             "@/*": ["./src/*"]
         }
     },
-    "include": ["src", "src-tauri", "vite.config*.ts", "playwright.config.ts", "e2e"]
+    "include": ["src", "src-tauri", "scripts", "vite.config*.ts", "playwright.config.ts", "e2e"]
 }

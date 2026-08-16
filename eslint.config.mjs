@@ -66,5 +66,18 @@ export default tseslint.config(
             'react-hooks/exhaustive-deps': 'error',
             'spaced-comment': ['error', 'always', { markers: ['/'] }],
         },
+    },
+    {
+        // `.prettierrc.cjs` and this file are plain JS, and tsconfig sets
+        // `allowJs: false`, so no TS project will ever claim them — the project
+        // service above would fail to parse them with "was not found by the
+        // project service". Nothing here needs type information anyway; the
+        // type-aware rule sets are not enabled.
+        files: ['**/*.{js,cjs,mjs}'],
+        languageOptions: {
+            parserOptions: {
+                projectService: false,
+            },
+        },
     }
 )
