@@ -1,6 +1,6 @@
 import { computePosition, shift, flip, offset, type ReferenceElement, size } from '@floating-ui/dom'
 import { PropsWithChildren, useCallback, useEffect, useRef, useState } from 'react'
-import Draggable, { DraggableData, DraggableEvent } from 'react-draggable'
+import Draggable, { DraggableBounds, DraggableData, DraggableEvent } from 'react-draggable'
 import {
     documentPadding,
     dragRegionSelector,
@@ -35,6 +35,20 @@ const useStyles = createUseStyles({
         minHeight: `${popupCardMinHeight}px`,
         width: 'max-content',
         overflow: 'hidden',
+        /**
+         * `size()` below caps the card's height, so anything taller has to scroll
+         * *inside* it — the card itself is `overflow: hidden` and the page behind it
+         * is not the pane's scroller. A block container gives a child no way to opt
+         * into that: it would be laid out at its full height and silently clipped
+         * (which is what made the settings pane unreachable below the fold, with the
+         * wheel falling through to the host page). As a column, a child that sets
+         * `min-height: 0` shrinks to whatever the cap leaves and can scroll itself.
+         * Nothing here shrinks unless it asks to, so the translator view is unchanged.
+         */
+        display: 'flex',
+        flexDirection: 'column',
+        // Keep a wheel that runs out of scroll inside the card from chaining to the page.
+        overscrollBehavior: 'contain',
     },
 })
 
@@ -44,6 +58,7 @@ export default function InnerContainer({ children, reference, compact }: Props) 
     const draggedRef = useRef(false)
     const draggableRef = useRef<HTMLDivElement | null>(null)
     const [position, setPosition] = useState({ x: 0, y: 0 })
+    const [bounds, setBounds] = useState<DraggableBounds>()
 
     const updatePosition = useCallback(async () => {
         if (!draggableRef.current) {
@@ -72,6 +87,35 @@ export default function InnerContainer({ children, reference, compact }: Props) 
             top: `${Math.max(documentPadding, y)}px`,
         })
     }, [reference])
+
+    /**
+     * Keep the card in the viewport, without `bounds='html'`.
+     *
+     * A bounds *selector* is resolved against `node.getRootNode()`, which for
+     * this card is the shadow root the content script mounts into — and a
+     * shadow tree has no `<html>`, so react-draggable throws out of every
+     * mousemove and the card never moves. (It used to query the owner document,
+     * which is why this only broke on the 4.5 upgrade.)
+     *
+     * Measuring is also the more correct answer: the card is `position: fixed`,
+     * so what has to stay reachable is the viewport, while `html` would have
+     * bounded it by the full scroll height of the page.
+     */
+    const handleOnStart = useCallback(() => {
+        const node = draggableRef.current
+        if (!node) {
+            return
+        }
+        const rect = node.getBoundingClientRect()
+        // In translate space: `rect` already includes the current offset, so
+        // each edge is measured from where the card sits right now.
+        setBounds({
+            left: position.x - rect.left + documentPadding,
+            top: position.y - rect.top + documentPadding,
+            right: position.x + window.innerWidth - rect.right - documentPadding,
+            bottom: position.y + window.innerHeight - rect.bottom - documentPadding,
+        })
+    }, [position])
 
     function handleOnDrag(event: DraggableEvent, data: DraggableData) {
         draggedRef.current = true
@@ -112,8 +156,9 @@ export default function InnerContainer({ children, reference, compact }: Props) 
         <Draggable
             nodeRef={draggableRef}
             handle={dragRegionSelector}
-            bounds='html'
+            bounds={bounds}
             position={position}
+            onStart={handleOnStart}
             onDrag={handleOnDrag}
         >
             <div ref={draggableRef} className={styles.container} id={popupCardInnerContainerId}>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createUseStyles } from 'react-jss'
 import { useTranslation } from 'react-i18next'
-import { BaseProvider } from 'baseui-sd'
+import { BaseProvider } from 'baseui'
 import { Provider as StyletronProvider } from 'styletron-react'
 import { Client as Styletron } from 'styletron-engine-atomic'
 import { IThemedStyleProps } from '../../common/types'
@@ -14,6 +14,9 @@ import { Tooltip } from '../../common/components/Tooltip'
 const useStyles = createUseStyles({
     container: ({ theme }: IThemedStyleProps) => ({
         display: 'flex',
+        // The card is a column flex container; the bar keeps its height when a
+        // taller pane below it (settings) shrinks to fit.
+        flexShrink: 0,
         background: theme.colors.backgroundPrimary,
         padding: '10px 16px 8px 16px',
         cursor: 'move',

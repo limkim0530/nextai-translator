@@ -19,6 +19,7 @@ import { GlobalSuspense } from '@/common/components/GlobalSuspense'
 import { type ReferenceElement } from '@floating-ui/dom'
 import InnerContainer from './InnerContainer'
 import TitleBar from './TitleBar'
+import { addShadowStyleTarget } from './shadow-styles'
 import { setExternalOriginalText } from '@/common/store'
 
 let root: Root | null = null
@@ -67,19 +68,7 @@ async function createPopupCard() {
     const $container = await getContainer()
     $container.shadowRoot?.querySelector('div')?.appendChild($popupCard)
     if ($container.shadowRoot) {
-        const shadowRoot = $container.shadowRoot
-        if (import.meta.hot) {
-            const { addViteStyleTarget } = await import('@samrum/vite-plugin-web-extension/client')
-            await addViteStyleTarget(shadowRoot)
-        } else {
-            const browser = await utils.getBrowser()
-            import.meta.PLUGIN_WEB_EXT_CHUNK_CSS_PATHS?.forEach((cssPath) => {
-                const styleEl = document.createElement('link')
-                styleEl.setAttribute('rel', 'stylesheet')
-                styleEl.setAttribute('href', browser.runtime.getURL(cssPath))
-                shadowRoot.appendChild(styleEl)
-            })
-        }
+        await addShadowStyleTarget($container.shadowRoot)
     }
     return $popupCard
 }

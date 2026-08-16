@@ -16,6 +16,9 @@ export default defineConfig({
         crx({
             manifest: getManifest('firefox'),
             browser: 'firefox',
+            // See the chromium config: shadow-root styles, so keep crxjs out of
+            // `content_scripts[].css`.
+            contentScripts: { injectCss: false },
         }),
     ],
     resolve: {

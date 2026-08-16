@@ -23,6 +23,12 @@ interface IRuntime {
     onMessage: IRuntimeOnMessage
     sendMessage(message: any): void
     getURL(path: string): string
+    /**
+     * Only the browser-extension polyfill backs this; the Tauri, userscript and
+     * Electron shims have no manifest, so callers must optional-chain it and
+     * degrade rather than assume a manifest exists.
+     */
+    getManifest?(): Record<string, any>
 }
 
 interface II18n {

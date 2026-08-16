@@ -14,6 +14,12 @@ export default defineConfig({
         crx({
             manifest: getManifest('chromium'),
             browser: 'chrome',
+            // The popup card lives in a shadow root, so its stylesheets must be
+            // linked into that root, not the host page. `false` keeps crxjs from
+            // declaring them in `content_scripts[].css` (which the browser would
+            // inject into the page) and puts them in `web_accessible_resources`
+            // instead, where the content script fetches them itself.
+            contentScripts: { injectCss: false },
         }),
     ],
     resolve: {
