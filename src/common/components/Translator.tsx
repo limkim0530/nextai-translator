@@ -3,8 +3,8 @@ import { useTranslation, Trans } from 'react-i18next'
 import toast from 'react-hot-toast/headless'
 import { Client as Styletron } from 'styletron-engine-atomic'
 import { Provider as StyletronProvider } from 'styletron-react'
-import { BaseProvider } from 'baseui-sd'
-import { Textarea } from 'baseui-sd/textarea'
+import { BaseProvider } from 'baseui'
+import { Textarea } from 'baseui/textarea'
 import { createUseStyles } from 'react-jss'
 import { AiOutlineFileSync } from 'react-icons/ai'
 import { IoSettingsOutline } from 'react-icons/io5'
@@ -12,26 +12,17 @@ import { TiArrowBack } from 'react-icons/ti'
 import { TbArrowsExchange, TbCsv } from 'react-icons/tb'
 import { MdOutlineGrade, MdGrade, MdHistory, MdBrowserUpdated } from 'react-icons/md'
 import * as mdIcons from 'react-icons/md'
-import { StatefulTooltip } from 'baseui-sd/tooltip'
+import { StatefulTooltip } from 'baseui/tooltip'
 import { detectLang, getLangConfig, sourceLanguages, targetLanguages, LangCode } from '../lang'
 import { translate, TranslateMode } from '../translate'
-import { Select, Value, Option } from 'baseui-sd/select'
+import { Select, Value, Option } from 'baseui/select'
 import { RxEraser, RxEnter, RxReload, RxStop } from 'react-icons/rx'
 import { LuStar, LuStarOff } from 'react-icons/lu'
 import { clsx } from 'clsx'
-import { Button } from 'baseui-sd/button'
+import { Button } from 'baseui/button'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '../components/ErrorFallback'
-import {
-    defaultAPIURL,
-    exportToCsv,
-    isDesktopApp,
-    isTauri,
-    getAssetUrl,
-    isUserscript,
-    setSettings,
-    isMacOS,
-} from '../utils'
+import { exportToCsv, isDesktopApp, isTauri, getAssetUrl, isUserscript, setSettings, isMacOS } from '../utils'
 import { InnerSettings } from './Settings'
 import { containerID, popupCardInnerContainerId } from '../../browser-extension/content_script/consts'
 import Dropzone from 'react-dropzone'
@@ -50,7 +41,7 @@ import { Tooltip } from './Tooltip'
 import { useSettings } from '../hooks/useSettings'
 import Vocabulary from './Vocabulary'
 import { useCollectedWordTotal } from '../hooks/useCollectedWordTotal'
-import { Modal, ModalBody, ModalHeader } from 'baseui-sd/modal'
+import { Modal, ModalBody, ModalHeader } from 'baseui/modal'
 import { vocabularyService } from '../services/vocabulary'
 import { Action, VocabularyItem, HistoryItem } from '../internal-services/db'
 import { CopyButton } from './CopyButton'
@@ -60,15 +51,15 @@ import { historyService } from '../services/history'
 import { ActionManager } from './ActionManager'
 import { TranslationHistory } from './TranslationHistory'
 import { GrMoreVertical } from 'react-icons/gr'
-import { StatefulPopover } from 'baseui-sd/popover'
-import { StatefulMenu } from 'baseui-sd/menu'
+import { StatefulPopover } from 'baseui/popover'
+import { StatefulMenu } from 'baseui/menu'
 import { IconType } from 'react-icons'
 import { GiPlatform } from 'react-icons/gi'
 import { IoIosRocket } from 'react-icons/io'
 import 'katex/dist/katex.min.css'
 import Latex from 'react-latex-next'
 import { Markdown } from './Markdown'
-import useResizeObserver from 'use-resize-observer'
+import { useResizeObserver } from 'use-resize-observer'
 import _ from 'underscore'
 import { GlobalSuspense } from './GlobalSuspense'
 import { useLazyEffect } from '../usehooks'
@@ -82,7 +73,7 @@ import { useDeepCompareCallback } from 'use-deep-compare'
 import { useTranslatorStore, setStoreTranslatedText, setStoreIsTranslating } from '../store'
 import { SpeakerIcon } from './SpeakerIcon'
 import { HoverableText, WordHoverProvider } from './WordHoverCard'
-import { Provider, engineIcons, getEngine, providerToEngine } from '../engines'
+import { isProviderUsable } from '../providers'
 import color from 'color'
 import { useAtom } from 'jotai'
 import { showSettingsAtom } from '../store/setting'
@@ -110,8 +101,8 @@ function genLangOptions(langs: [LangCode, string][]): Value {
 const sourceLangOptions = genLangOptions(sourceLanguages)
 const targetLangOptions = genLangOptions(targetLanguages)
 
-const isProviderValue = (value: unknown): value is Provider => {
-    return typeof value === 'string' && Object.prototype.hasOwnProperty.call(providerToEngine, value)
+const isProviderValue = (value: unknown): value is string => {
+    return typeof value === 'string' && value.length > 0
 }
 
 const useStyles = createUseStyles({
@@ -594,11 +585,20 @@ export interface ITranslatorProps extends IInnerTranslatorProps {
 export function Translator(props: ITranslatorProps) {
     const { theme } = useTheme()
 
+    /**
+     * In the popup card the height cap lives on the card itself, and a cap only
+     * reaches a descendant through boxes that agree to shrink with it. These two
+     * wrappers exist purely to host providers and carry no styles of their own, so
+     * dropping their boxes lets the translator sit directly in the card's column —
+     * without it the settings pane is laid out at full height and silently clipped.
+     */
+    const passthrough = props.openSource === 'content-script' ? ({ display: 'contents' } as const) : undefined
+
     return (
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <div>
+            <div style={passthrough}>
                 <StyletronProvider value={props.engine}>
-                    <BaseProvider theme={theme}>
+                    <BaseProvider theme={theme} overrides={passthrough && { AppContainer: { style: passthrough } }}>
                         <GlobalSuspense>
                             <InnerTranslator {...props} />
                         </GlobalSuspense>
@@ -611,6 +611,10 @@ export function Translator(props: ITranslatorProps) {
 
 function InnerTranslator(props: IInnerTranslatorProps) {
     const [showSettings, setShowSettings] = useAtom(showSettingsAtom)
+
+    // The height-capped card the content script (and the userscript, which shares
+    // its entry) mounts into, as opposed to a window that scrolls on its own.
+    const isPopupCard = props.openSource === 'content-script'
 
     useEffect(() => {
         setShowSettings(props.showSettings ?? false)
@@ -707,15 +711,13 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         if (!settings) {
             return
         }
-        const engine = getEngine(settings.provider)
-        engine.getModel().then((model) => {
-            setTranslateDeps((prev) => {
-                return {
-                    ...prev,
-                    provider: settings.provider,
-                    engineModel: model,
-                }
-            })
+        const provider = settings.providers?.find((p) => p.id === settings.defaultProviderId) ?? settings.providers?.[0]
+        setTranslateDeps((prev) => {
+            return {
+                ...prev,
+                provider: provider?.name,
+                engineModel: provider?.model,
+            }
         })
     }, [settings])
 
@@ -793,6 +795,27 @@ function InnerTranslator(props: IInnerTranslatorProps) {
     }, [selectedWord, highlightWords, speakingInputRange])
 
     const [activateAction, setActivateAction] = useState<Action>()
+
+    /** The provider a request would use if no action override applies. */
+    const activeProvider = useMemo(() => {
+        const providers = settings?.providers ?? []
+        return providers.find((p) => p.id === settings?.defaultProviderId) ?? providers[0]
+    }, [settings?.providers, settings?.defaultProviderId])
+
+    /**
+     * What the footer should credit: an action may pin a different provider and
+     * model than the global default.
+     */
+    const effectiveProvider = useMemo(() => {
+        if (!activeProvider) {
+            return undefined
+        }
+        const pinned = activateAction?.providerId
+            ? (settings?.providers ?? []).find((p) => p.id === activateAction.providerId)
+            : undefined
+        const base = pinned ?? activeProvider
+        return activateAction?.apiModel ? { ...base, model: activateAction.apiModel } : base
+    }, [activeProvider, activateAction?.providerId, activateAction?.apiModel, settings?.providers])
 
     const currentTranslateMode = useMemo(() => {
         editorRef.current?.focus()
@@ -1009,7 +1032,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         targetLang?: LangCode
         text: string
         action?: Action
-        provider?: Provider
+        provider?: string
         engineModel?: string
     }>({
         sourceLang: undefined,
@@ -1116,7 +1139,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             ;(async () => {
                 // use dynamic import to reduce bundle size
                 const { countTokens } = await import('../token')
-                setTokenCount(countTokens(editableText, settings?.apiModel))
+                setTokenCount(countTokens(editableText, activeProvider?.model))
             })()
         },
         [editableText],
@@ -1335,8 +1358,8 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                             actionId: translateDeps.action.id,
                             actionName: translateDeps.action.name,
                             actionMode: translateDeps.action.mode,
-                            provider: translateDeps.provider ?? settings.provider,
-                            engineModel: translateDeps.engineModel ?? settings.apiModel,
+                            provider: translateDeps.provider ?? activeProvider?.name,
+                            engineModel: translateDeps.engineModel ?? activeProvider?.model,
                             wordMode: isWordModeRef.current,
                             tokenCount,
                         })
@@ -1461,7 +1484,14 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                     return
                 }
                 setActionStr('Error')
-                setErrorMessage((error as Error).toString())
+                if (error.name === 'NoProviderConfiguredError') {
+                    // The first run has no providers at all, and the raw message
+                    // gives the user nothing to act on.
+                    setErrorMessage(t('Add a provider in settings before translating.'))
+                    setShowSettings(true)
+                } else {
+                    setErrorMessage((error as Error).toString())
+                }
             } finally {
                 if (!isStopped && translationID === translationIDRef.current) {
                     stopLoading()
@@ -1469,7 +1499,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                 }
             }
         },
-        [translateDeps, translationFlag, startLoading, stopLoading, t]
+        [translateDeps, translationFlag, startLoading, stopLoading, setShowSettings, t]
     )
 
     const translateControllerRef = useRef<AbortController | null>(null)
@@ -1510,7 +1540,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                 sourceLang: item.sourceLang,
                 targetLang: item.targetLang,
                 action: nextAction,
-                provider: providerFromHistory ?? prev.provider ?? settings.provider,
+                provider: providerFromHistory ?? prev.provider ?? activeProvider?.name,
                 engineModel: item.engineModel ?? prev.engineModel,
             }
             // Only arm the skip flag when the deps actually changed: if they
@@ -1520,7 +1550,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             skipNextTranslateRef.current = JSON.stringify(prev) !== JSON.stringify(next)
             setTranslateDeps(next)
         },
-        [actions, settings.provider, setActivateAction]
+        [actions, activeProvider, setActivateAction]
     )
 
     useEffect(() => {
@@ -1545,31 +1575,13 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         if (!settings) {
             return
         }
-        if (settings.provider === 'OpenAI' && !settings.apiKeys) {
+        // One check now covers every endpoint, including custom ones: before,
+        // only six hardcoded vendors were validated and anything else silently
+        // fell through to a failing request.
+        if (!isProviderUsable(activeProvider)) {
             setShowSettings(true)
-            return
         }
-        if (settings.provider === 'Azure' && !settings.azureAPIKeys) {
-            setShowSettings(true)
-            return
-        }
-        if (settings.provider === 'ChatGPT' && !settings.chatgptModel) {
-            setShowSettings(true)
-            return
-        }
-        if (settings.provider === 'MiniMax' && !settings.miniMaxAPIKey) {
-            setShowSettings(true)
-            return
-        }
-        if (settings.provider === 'Moonshot' && !settings.moonshotAPIKey) {
-            setShowSettings(true)
-            return
-        }
-        if (settings.provider === 'Groq' && !settings.groqAPIKey) {
-            setShowSettings(true)
-            return
-        }
-    }, [props.defaultShowSettings, setShowSettings, settings])
+    }, [props.defaultShowSettings, setShowSettings, settings, activeProvider])
 
     const [isOCRProcessing, setIsOCRProcessing] = useState(false)
     const [showOCRProcessing, setShowOCRProcessing] = useState(false)
@@ -1925,6 +1937,13 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                 background: isDesktopApp() ? 'transparent' : theme.colors.backgroundPrimary,
                 paddingBottom: showSettings || settings.enableBackgroundBlur ? '0px' : '42px',
                 fontSize: settings.uiFontSize,
+                // In the popup card there is no page behind this to scroll: the card
+                // caps its own height, so the settings pane has to be its own scroller
+                // (see InnerContainer). Passing the cap down means shrinking with the
+                // card (`min-height: 0`) and handing the leftover height to the pane.
+                ...(isPopupCard && showSettings
+                    ? { display: 'flex', flexDirection: 'column', minHeight: 0 }
+                    : undefined),
             }}
         >
             {showSettings && (
@@ -2175,11 +2194,9 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                             settings.enableBackgroundBlur && styles.popupCardContentContainerBackgroundBlur
                         )}
                     >
-                        {settings?.apiURL === defaultAPIURL && (
-                            <div>
-                                <IpLocationNotification showSettings={showSettings} />
-                            </div>
-                        )}
+                        <div>
+                            <IpLocationNotification showSettings={showSettings} />
+                        </div>
                         <div ref={editorContainerRef} className={styles.popupCardEditorContainer}>
                             <div
                                 style={{
@@ -2514,30 +2531,6 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                 </div>
                                             </Tooltip>
                                         </div>
-                                        {settings.provider === 'ChatGPT' && (
-                                            <div
-                                                style={{
-                                                    color: theme.colors.contentPrimary,
-                                                }}
-                                            >
-                                                {t('Go to the')}{' '}
-                                                <a
-                                                    target='_blank'
-                                                    href={
-                                                        settings?.i18n?.toLowerCase().includes('zh')
-                                                            ? 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/chatgpt-cn.md'
-                                                            : 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/chatgpt.md'
-                                                    }
-                                                    rel='noreferrer'
-                                                    style={{
-                                                        color: theme.colors.contentSecondary,
-                                                    }}
-                                                >
-                                                    FAQ Page
-                                                </a>{' '}
-                                                {t('to get the solutions.')}
-                                            </div>
-                                        )}
                                     </>
                                 ) : (
                                     <div
@@ -2567,8 +2560,8 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                                     isLoading
                                                                         ? undefined
                                                                         : isWordMode
-                                                                        ? sourceLang
-                                                                        : targetLang ?? 'en'
+                                                                          ? sourceLang
+                                                                          : (targetLang ?? 'en')
                                                                 }
                                                                 speechText={editableText}
                                                                 ttsProvider={settings.tts?.provider}
@@ -2578,7 +2571,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                                             item.lang ===
                                                                             (isWordMode
                                                                                 ? sourceLang
-                                                                                : targetLang ?? 'en')
+                                                                                : (targetLang ?? 'en'))
                                                                     )?.voice
                                                                 }
                                                                 ttsRate={settings.tts?.rate}
@@ -2676,7 +2669,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                                             lang={
                                                                                 isWordMode
                                                                                     ? sourceLang
-                                                                                    : targetLang ?? 'en'
+                                                                                    : (targetLang ?? 'en')
                                                                             }
                                                                             provider={settings.tts?.provider}
                                                                             voice={
@@ -2685,7 +2678,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                                                         item.lang ===
                                                                                         (isWordMode
                                                                                             ? sourceLang
-                                                                                            : targetLang ?? 'en')
+                                                                                            : (targetLang ?? 'en'))
                                                                                 )?.voice
                                                                             }
                                                                             rate={settings.tts?.rate}
@@ -2779,110 +2772,15 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                         )}
                                     </div>
                                 )}
-                                {isNotLogin && settings?.provider === 'ChatGPT' && (
+                                {isNotLogin && (
                                     <div
                                         style={{
                                             fontSize: '12px',
                                             color: theme.colors.contentPrimary,
                                         }}
                                     >
-                                        <span>{t('Please login to ChatGPT Web')}: </span>
-                                        <a
-                                            href='https://chat.openai.com'
-                                            target='_blank'
-                                            rel='noreferrer'
-                                            style={{
-                                                color: theme.colors.contentSecondary,
-                                            }}
-                                        >
-                                            Login
-                                        </a>
-                                    </div>
-                                )}
-                                {isNotLogin && settings?.provider === 'Kimi' && (
-                                    <div
-                                        style={{
-                                            fontSize: '12px',
-                                            color: theme.colors.contentPrimary,
-                                        }}
-                                    >
-                                        {isDesktopApp() ? (
-                                            <>
-                                                {t('Go to the')}{' '}
-                                                <a
-                                                    target='_blank'
-                                                    href={
-                                                        settings?.i18n?.toLowerCase().includes('zh')
-                                                            ? 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/kimi-cn.md'
-                                                            : 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/kimi.md'
-                                                    }
-                                                    rel='noreferrer'
-                                                    style={{
-                                                        color: theme.colors.contentSecondary,
-                                                    }}
-                                                >
-                                                    Tutorial
-                                                </a>{' '}
-                                                {t('to get your API Key.')}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span>{t('Please login to Kimi Web')}: </span>
-                                                <a
-                                                    href='https://kimi.moonshot.cn/'
-                                                    target='_blank'
-                                                    rel='noreferrer'
-                                                    style={{
-                                                        color: theme.colors.contentSecondary,
-                                                    }}
-                                                >
-                                                    Login
-                                                </a>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
-                                {isNotLogin && settings?.provider === 'ChatGLM' && (
-                                    <div
-                                        style={{
-                                            fontSize: '12px',
-                                            color: theme.colors.contentPrimary,
-                                        }}
-                                    >
-                                        {isDesktopApp() ? (
-                                            <>
-                                                {t('Go to the')}{' '}
-                                                <a
-                                                    target='_blank'
-                                                    href={
-                                                        settings?.i18n?.toLowerCase().includes('zh')
-                                                            ? 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/chatglm-cn.md'
-                                                            : 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/chatglm.md'
-                                                    }
-                                                    rel='noreferrer'
-                                                    style={{
-                                                        color: theme.colors.contentSecondary,
-                                                    }}
-                                                >
-                                                    Tutorial
-                                                </a>{' '}
-                                                {t('to get your API Key.')}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span>{t('Please login to ChatGLM Web')}: </span>
-                                                <a
-                                                    href='https://chatglm.cn/'
-                                                    target='_blank'
-                                                    rel='noreferrer'
-                                                    style={{
-                                                        color: theme.colors.contentSecondary,
-                                                    }}
-                                                >
-                                                    Login
-                                                </a>
-                                            </>
-                                        )}
+                                        {t('The provider rejected the credentials. Check the API key and base URL for')}{' '}
+                                        <b>{activeProvider?.name ?? t('the active provider')}</b>.
                                     </div>
                                 )}
                             </div>
@@ -2916,6 +2814,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                             }}
                         >
                             <div
+                                data-testid='settings-toggle-btn'
                                 style={{
                                     display: 'flex',
                                     flexDirection: 'row',
@@ -2946,18 +2845,11 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                     </Tooltip>
                     {!showSettings && (
                         <div className={styles.poweredBy}>
-                            Powered by{' '}
-                            <div className={styles.brand}>
-                                {React.createElement(engineIcons[activateAction?.provider || settings.provider], {
-                                    size: 10,
-                                })}
-                                {activateAction?.provider || settings.provider}
-                            </div>
-                            {(activateAction?.apiModel || translateDeps.engineModel) &&
-                                ` ${activateAction?.apiModel || translateDeps.engineModel}`}
-                            {(activateAction?.provider || settings.provider) === 'Claude' &&
-                                (activateAction?.thinking ?? settings.claudeThinking) &&
-                                ' · Thinking Mode'}
+                            Powered by <div className={styles.brand}>{effectiveProvider?.name ?? t('No provider')}</div>
+                            {effectiveProvider?.model && ` ${effectiveProvider.model}`}
+                            {effectiveProvider?.reasoning &&
+                                effectiveProvider.reasoning !== 'provider-default' &&
+                                ` · ${effectiveProvider.reasoning}`}
                         </div>
                     )}
                     {!showSettings && props.openSource !== 'content-script' && (

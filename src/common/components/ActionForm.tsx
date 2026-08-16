@@ -2,9 +2,9 @@ import { useTranslation } from 'react-i18next'
 import { ICreateActionOption } from '../internal-services/action'
 import { Action } from '../internal-services/db'
 import { createForm } from './Form'
-import { Input } from 'baseui-sd/input'
-import { Textarea } from 'baseui-sd/textarea'
-import { Button } from 'baseui-sd/button'
+import { Input } from 'baseui/input'
+import { Textarea } from 'baseui/textarea'
+import { Button } from 'baseui/button'
 import { useCallback, useEffect, useState } from 'react'
 import { actionService } from '../services/action'
 import { createUseStyles } from 'react-jss'
@@ -13,8 +13,6 @@ import { useTheme } from '../hooks/useTheme'
 import { IconPicker } from './IconPicker'
 import { RenderingFormatSelector } from './RenderingFormatSelector'
 import { ProviderSelector } from './Settings'
-import { Checkbox } from 'baseui-sd/checkbox'
-import { Select } from 'baseui-sd/select'
 
 const useStyles = createUseStyles({
     placeholder: (props: IThemedStyleProps) => ({
@@ -43,50 +41,6 @@ export interface IActionFormProps {
 }
 
 const { Form, FormItem } = createForm<ICreateActionOption>()
-
-interface ThinkingCheckboxProps {
-    value?: boolean
-    onChange?: (value: boolean) => void
-}
-
-function ThinkingCheckbox({ value, onChange }: ThinkingCheckboxProps) {
-    const { t } = useTranslation()
-    return (
-        <Checkbox
-            checked={value}
-            onChange={(e) => {
-                onChange?.((e.target as HTMLInputElement).checked)
-            }}
-        >
-            <span style={{ fontSize: '13px' }}>{t('Enable')}</span>
-        </Checkbox>
-    )
-}
-
-interface ActionThinkingLevelSelectorProps {
-    value?: string
-    onChange?: (value: string) => void
-}
-
-function ActionThinkingLevelSelector({ value, onChange }: ActionThinkingLevelSelectorProps) {
-    const { t } = useTranslation()
-    return (
-        <Select
-            size='compact'
-            searchable={false}
-            clearable={false}
-            options={[
-                { id: 'low', label: t('Low') },
-                { id: 'medium', label: t('Medium') },
-                { id: 'high', label: t('High') },
-            ]}
-            value={value ? [{ id: value }] : [{ id: 'medium' }]}
-            onChange={(params) => {
-                onChange?.(params.value[0]?.id as string)
-            }}
-        />
-    )
-}
 
 export function ActionForm(props: IActionFormProps) {
     const { theme, themeType } = useTheme()
@@ -215,25 +169,13 @@ export function ActionForm(props: IActionFormProps) {
                     </FormItem>
                 </>
             )}
-            <FormItem name='provider' label={`${t('Action Provider')} (Optional)`}>
+            <FormItem name='providerId' label={`${t('Action Provider')} (Optional)`}>
                 <ProviderSelector />
             </FormItem>
-            {values?.provider && (
+            {values?.providerId && (
                 <FormItem name='apiModel' label={`${t('Action Model')} (Optional)`}>
-                    <Input size='compact' placeholder='e.g. claude-sonnet-4-20250514' />
+                    <Input size='compact' placeholder={t('Leave empty to use the provider default') ?? ''} />
                 </FormItem>
-            )}
-            {values?.provider === 'Claude' && (
-                <>
-                    <FormItem name='thinking' label={t('Enable Extended Thinking')}>
-                        <ThinkingCheckbox />
-                    </FormItem>
-                    {values.thinking && (
-                        <FormItem name='thinkingLevel' label={t('Thinking Level')}>
-                            <ActionThinkingLevelSelector />
-                        </FormItem>
-                    )}
-                </>
             )}
             <div
                 style={{

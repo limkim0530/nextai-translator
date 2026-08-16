@@ -5,7 +5,7 @@ import { RxCross2 } from 'react-icons/rx'
 import { IThemedStyleProps } from '../types'
 import { useTheme } from '../hooks/useTheme'
 import { useSettings } from '../hooks/useSettings'
-import { getEngine } from '../engines'
+import { resolveProvider, streamChat } from '../providers'
 import { translate } from '../translate'
 import { detectLang, LangCode } from '../lang'
 import { actionInternalService } from '../internal-services/action'
@@ -427,11 +427,11 @@ export function QuickTranslator({ fetchContext, onClose, onHide }: QuickTranslat
                 }
                 const historyHint = summarizeHistory(history.map((h) => ({ text: h.text, createdAt: h.createdAt })))
                 const { rolePrompt, commandPrompt } = buildPickerPrompts(context, historyHint, targetLang)
-                const engine = getEngine(settings.provider)
+                const provider = resolveProvider(settings)
                 let buffer = ''
                 let parsed: Candidate[] = []
                 let triggeredTranslate = false
-                await engine.sendMessage({
+                await streamChat(provider, {
                     rolePrompt,
                     commandPrompt,
                     signal: controller.signal,
@@ -472,7 +472,7 @@ export function QuickTranslator({ fetchContext, onClose, onHide }: QuickTranslat
                 setPickerLoading(false)
             }
         },
-        [fetchContext, settings.provider, targetLang, t]
+        [fetchContext, settings, targetLang, t]
     )
 
     const runTranslate = useCallback(

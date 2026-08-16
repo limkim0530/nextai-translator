@@ -2,7 +2,7 @@
 import { version } from '../../package.json'
 
 export function getManifest(browser: 'firefox' | 'chromium') {
-    const manifest: chrome.runtime.Manifest = {
+    const manifest = {
         manifest_version: 3,
 
         name: 'NextAI Translator',
@@ -39,7 +39,7 @@ export function getManifest(browser: 'firefox' | 'chromium') {
             service_worker: 'src/browser-extension/background/index.ts',
         },
 
-        permissions: ['storage', 'contextMenus', 'webRequest'],
+        permissions: ['storage', 'contextMenus'],
 
         commands: {
             'open-popup': {
@@ -51,36 +51,39 @@ export function getManifest(browser: 'firefox' | 'chromium') {
             },
         },
 
+        // Only what the app itself calls regardless of which LLM provider the
+        // user configures: TTS, language detection and the dictionary lookup.
+        // LLM endpoints are no longer listed here — a user-defined provider can
+        // point anywhere, so its origin is requested at runtime instead (see
+        // `providers/permissions.ts`).
         host_permissions: [
-            'https://*.openai.com/',
-            'https://*.openai.azure.com/',
             '*://speech.platform.bing.com/',
-            'https://*.minimax.chat/',
             'https://*.githubusercontent.com/',
             'https://*.baidu.com/',
             'https://api-edge.cognitive.microsofttranslator.com/',
             'https://*.microsoft.com/',
             'https://*.google.com/',
-            'https://*.googleapis.com/',
-            'https://*.moonshot.cn/',
-            'https://*.volces.com/',
-            'https://*.chatglm.cn/',
-            'https://*.cohere.ai/',
-            'https://*.deepseek.com/',
+            'https://models.dev/',
             'https://api.dictionaryapi.dev/',
         ],
+
+        optional_host_permissions: ['http://*/*', 'https://*/*'],
     }
 
     if (browser === 'firefox') {
-        manifest.browser_specific_settings = {
-            gecko: {
-                id: 'openaitranslator@gmail.com',
+        return {
+            ...manifest,
+            browser_specific_settings: {
+                gecko: {
+                    id: 'openaitranslator@gmail.com',
+                },
             },
-        }
-        manifest.background = {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            scripts: ['src/browser-extension/background/index.ts'],
+            // Gecko runs MV3 background as persistent scripts rather than a
+            // service worker; `crx({ browser: 'firefox' })` leaves this shape
+            // alone instead of rewriting it into `service_worker`.
+            background: {
+                scripts: ['src/browser-extension/background/index.ts'],
+            },
         }
     }
     return manifest

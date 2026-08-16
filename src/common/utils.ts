@@ -6,17 +6,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { listen, Event, emit } from '@tauri-apps/api/event'
 import { parse as bestEffortJSONParse } from 'best-effort-json-parser'
 import { commands } from '@/tauri/bindings'
-import { OPENAI_CHAT_COMPLETIONS_API_PATH, OPENAI_PREFERRED_DEFAULT_MODEL } from './openai-api-path'
-
-export const defaultAPIURL = 'https://api.openai.com'
-export const defaultAPIURLPath = OPENAI_CHAT_COMPLETIONS_API_PATH
-export const defaultProvider = 'OpenAI'
-export const defaultAPIModel = OPENAI_PREFERRED_DEFAULT_MODEL
-
-export const defaultChatGPTAPIAuthSessionAPIURL = 'https://chat.openai.com/api/auth/session'
-export const defaultChatGPTWebAPI = 'https://chat.openai.com/backend-api'
-export const defaultGeminiAPIURL = 'https://generativelanguage.googleapis.com'
-export const defaultChatGPTModel = 'text-davinci-002-render-sha'
 
 export const defaultAutoTranslate = false
 export const defaultTargetLanguage = 'zh-Hans'
@@ -25,42 +14,13 @@ export const defaultSelectInputElementsText = true
 export const defaultReadSelectedWordsFromInputElementsText = false
 export const defaulti18n = 'en'
 
-export async function getApiKey(): Promise<string> {
-    const settings = await getSettings()
-    const apiKeys = (settings.apiKeys ?? '').split(',').map((s) => s.trim())
-    return apiKeys[Math.floor(Math.random() * apiKeys.length)] ?? ''
-}
-
-export async function getAzureApiKey(): Promise<string> {
-    const settings = await getSettings()
-    const apiKeys = (settings.azureAPIKeys ?? '').split(',').map((s) => s.trim())
-    return apiKeys[Math.floor(Math.random() * apiKeys.length)] ?? ''
-}
-
 // In order to let the type system remind you that all keys have been passed to browser.storage.sync.get(keys)
 const settingKeys: Record<keyof ISettings, number> = {
     automaticCheckForUpdates: 1,
-    apiKeys: 1,
-    apiURL: 1,
-    apiURLPath: 1,
-    apiModel: 1,
-    provider: 1,
-    chatgptModel: 1,
-    azureAPIKeys: 1,
-    azureAPIURL: 1,
-    azureAPIURLPath: 1,
-    azureAPIModel: 1,
-    azMaxWords: 1,
+    providers: 1,
+    defaultProviderId: 1,
     enableMica: 1,
     enableBackgroundBlur: 1,
-    miniMaxGroupID: 1,
-    miniMaxAPIKey: 1,
-    miniMaxAPIModel: 1,
-    moonshotAPIKey: 1,
-    moonshotAPIModel: 1,
-    geminiAPIURL: 1,
-    geminiAPIKey: 1,
-    geminiAPIModel: 1,
     autoTranslate: 1,
     defaultTranslateMode: 1,
     defaultTargetLanguage: 1,
@@ -86,42 +46,9 @@ const settingKeys: Record<keyof ISettings, number> = {
     languageDetectionEngine: 1,
     autoHideWindowWhenOutOfFocus: 1,
     proxy: 1,
-    customModelName: 1,
-    ollamaAPIURL: 1,
-    ollamaAPIModel: 1,
-    ollamaCustomModelName: 1,
-    ollamaModelLifetimeInMemory: 1,
-    thinkingEnabled: 1,
-    groqAPIURL: 1,
-    groqAPIURLPath: 1,
-    groqAPIModel: 1,
-    groqAPIKey: 1,
-    groqCustomModelName: 1,
-    claudeAPIURL: 1,
-    claudeAPIURLPath: 1,
-    claudeAPIModel: 1,
-    claudeAPIKey: 1,
-    claudeCustomModelName: 1,
-    kimiRefreshToken: 1,
-    kimiAccessToken: 1,
-    chatglmAccessToken: 1,
-    chatglmRefreshToken: 1,
-    cohereAPIKey: 1,
-    cohereAPIModel: 1,
-    deepSeekAPIKey: 1,
-    deepSeekAPIModel: 1,
-    cerebrasAPIKey: 1,
-    cerebrasAPIModel: 1,
-    teamoRouterAPIKey: 1,
-    teamoRouterAPIModel: 1,
-    openRouterAPIKey: 1,
-    openRouterAPIModel: 1,
     fontSize: 1,
     uiFontSize: 1,
     iconSize: 1,
-    noModelsAPISupport: 1,
-    claudeThinking: 1,
-    claudeThinkingLevel: 1,
     useCompactLookup: 1,
 }
 
@@ -130,20 +57,16 @@ export async function getSettings(): Promise<ISettings> {
     const items = await browser.storage.sync.get(Object.keys(settingKeys))
 
     const settings = items as ISettings
-    if (!settings.apiKeys) {
-        settings.apiKeys = ''
+    // `storage.sync` round-trips JSON, and the Tauri config file is hand-editable,
+    // so a malformed value here would otherwise crash every caller downstream.
+    if (!Array.isArray(settings.providers)) {
+        settings.providers = []
     }
-    if (!settings.apiURL) {
-        settings.apiURL = defaultAPIURL
+    if (settings.defaultProviderId && !settings.providers.some((p) => p.id === settings.defaultProviderId)) {
+        settings.defaultProviderId = settings.providers[0]?.id
     }
-    if (!settings.apiURLPath) {
-        settings.apiURLPath = defaultAPIURLPath
-    }
-    if (!settings.apiModel) {
-        settings.apiModel = defaultAPIModel
-    }
-    if (!settings.provider) {
-        settings.provider = defaultProvider
+    if (!settings.defaultProviderId) {
+        settings.defaultProviderId = settings.providers[0]?.id
     }
     if (settings.autoTranslate === undefined || settings.autoTranslate === null) {
         settings.autoTranslate = defaultAutoTranslate
@@ -180,25 +103,6 @@ export async function getSettings(): Promise<ISettings> {
         // had selected it onto the local engine.
         settings.tts = { ...settings.tts, provider: 'LocalTTS' }
     }
-    if (settings.provider === 'Azure') {
-        if (!settings.azureAPIKeys) {
-            settings.azureAPIKeys = settings.apiKeys
-        }
-        if (!settings.azureAPIURL) {
-            settings.azureAPIURL = settings.apiURL
-        }
-        if (!settings.azureAPIURLPath) {
-            settings.azureAPIURLPath = settings.apiURLPath
-        }
-        if (!settings.azureAPIModel) {
-            settings.azureAPIModel = settings.apiModel
-        }
-    }
-    if (settings.provider === 'ChatGPT') {
-        if (!settings.chatgptModel) {
-            settings.chatgptModel = settings.apiModel
-        }
-    }
     if (settings.automaticCheckForUpdates === undefined || settings.automaticCheckForUpdates === null) {
         settings.automaticCheckForUpdates = true
     }
@@ -225,27 +129,6 @@ export async function getSettings(): Promise<ISettings> {
             noProxy: 'localhost,127.0.0.1',
         }
     }
-    if (!settings.ollamaAPIURL) {
-        settings.ollamaAPIURL = 'http://127.0.0.1:11434'
-    }
-    if (!settings.miniMaxAPIModel) {
-        settings.miniMaxAPIModel = 'MiniMax-M2.7'
-    }
-    if (!settings.groqAPIURL) {
-        settings.groqAPIURL = 'https://api.groq.com'
-    }
-    if (!settings.groqAPIURLPath) {
-        settings.groqAPIURLPath = '/openai/v1/chat/completions'
-    }
-    if (!settings.claudeAPIURL) {
-        settings.claudeAPIURL = 'https://api.anthropic.com'
-    }
-    if (!settings.claudeAPIURLPath) {
-        settings.claudeAPIURLPath = '/v1/messages'
-    }
-    if (settings.geminiAPIURL === undefined || settings.geminiAPIURL === null) {
-        settings.geminiAPIURL = defaultGeminiAPIURL
-    }
     if (settings.fontSize === undefined || settings.fontSize === null) {
         settings.fontSize = 15
     }
@@ -255,17 +138,8 @@ export async function getSettings(): Promise<ISettings> {
     if (settings.iconSize === undefined || settings.iconSize === null) {
         settings.iconSize = 15
     }
-    if (settings.azMaxWords === undefined || settings.azMaxWords === null) {
-        settings.azMaxWords = 1024
-    }
     if (settings.hideTheIconInTheDock === undefined || settings.hideTheIconInTheDock === null) {
         settings.hideTheIconInTheDock = true
-    }
-    if (settings.ollamaModelLifetimeInMemory === undefined || settings.ollamaModelLifetimeInMemory === null) {
-        settings.ollamaModelLifetimeInMemory = '5m'
-    }
-    if (settings.thinkingEnabled === undefined || settings.thinkingEnabled === null) {
-        settings.thinkingEnabled = false
     }
     return settings
 }
@@ -331,16 +205,6 @@ export const isDarkMode = async () => {
 }
 
 export const isFirefox = () => /firefox/i.test(navigator.userAgent)
-
-export const isUsingOpenAIOfficialAPIEndpoint = async () => {
-    const settings = await getSettings()
-    return settings.provider === defaultProvider && settings.apiURL === defaultAPIURL
-}
-
-export const isUsingOpenAIOfficial = async () => {
-    const settings = await getSettings()
-    return settings.provider === 'ChatGPT' || (await isUsingOpenAIOfficialAPIEndpoint())
-}
 
 // js to csv
 export async function exportToCsv<T extends Record<string, string | number>>(filename: string, rows: T[]) {
@@ -440,16 +304,16 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
             const parsedResponse = JSON.parse(prevJSONPartial + value)
             prevJSONPartial = ''
             onMessage(JSON.stringify(parsedResponse))
-        } catch (e) {
+        } catch {
             prevJSONPartial += value
             return
         }
     }
 
-    const sseParser = createParser(async (event) => {
-        if (event.type === 'event') {
+    const sseParser = createParser({
+        onEvent: async (event) => {
             await onMessage(event.data)
-        }
+        },
     })
 
     if (isTauri()) {
@@ -508,7 +372,7 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
                         try {
                             const data = JSON.parse(payload.data)
                             onError(data)
-                        } catch (e) {
+                        } catch {
                             onError(payload.data)
                         }
                         return
@@ -584,41 +448,3 @@ export function getAssetUrl(asset: string) {
 export const isMacOS = navigator.userAgent.includes('Mac OS X')
 export const isWindows = navigator.userAgent.includes('Windows')
 
-/** Maps a provider name to its API key field in ISettings. */
-export function getAPIKeyForProvider(provider: string, settings: ISettings): string | undefined {
-    switch (provider) {
-        case 'OpenAI':
-            return settings.apiKeys
-        case 'Azure':
-            return settings.azureAPIKeys
-        case 'Claude':
-            return settings.claudeAPIKey
-        case 'Gemini':
-            return settings.geminiAPIKey
-        case 'Groq':
-            return settings.groqAPIKey
-        case 'DeepSeek':
-            return settings.deepSeekAPIKey
-        case 'Cerebras':
-            return settings.cerebrasAPIKey
-        case 'TeamoRouter':
-            return settings.teamoRouterAPIKey
-        case 'OpenRouter':
-            return settings.openRouterAPIKey
-        case 'Moonshot':
-            return settings.moonshotAPIKey
-        case 'MiniMax':
-            return settings.miniMaxAPIKey
-        case 'Cohere':
-            return settings.cohereAPIKey
-        case 'Kimi':
-            return settings.kimiAccessToken
-        case 'ChatGLM':
-            return settings.chatglmAccessToken
-        case 'ChatGPT':
-        case 'Ollama':
-            return undefined
-        default:
-            return undefined
-    }
-}

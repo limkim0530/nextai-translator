@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { getLangConfig, getLangName, LangCode } from '../common/lang'
 import { Action } from './internal-services/db'
 import { codeBlock, oneLine, oneLineTrim } from 'common-tags'
-import { getEngine } from './engines'
+import { resolveProvider, streamChat } from './providers'
 import { getSettings } from './utils'
 
 export type TranslateMode = 'translate' | 'polishing' | 'summarize' | 'analyze' | 'explain-code' | 'big-bang'
@@ -63,18 +63,6 @@ export const isAWord = (langCode: string, text: string) => {
     const segmenter = new Segmenter(langCode, { granularity: 'word' })
     const iterator = segmenter.segment(text)[Symbol.iterator]()
     return iterator.next().value?.segment === text
-}
-
-function getThinkingBudget(level: string): number {
-    switch (level) {
-        case 'low':
-            return 5000
-        case 'high':
-            return 20000
-        case 'medium':
-        default:
-            return 10000
-    }
 }
 
 export class QuoteProcessor {
@@ -409,29 +397,16 @@ If you understand, say "yes", and then we will begin.`
 
     const settings = await getSettings()
 
-    // Use per-action provider/model if configured, otherwise fall back to global settings
-    const effectiveProvider = (query.mode !== 'big-bang' && query.action?.provider) || settings.provider
-    const effectiveModel = query.mode !== 'big-bang' ? query.action?.apiModel : undefined
+    // A per-action provider override names a provider row by id; the action may
+    // also pin a specific model on that provider without changing anything else.
+    const actionProviderId = query.mode !== 'big-bang' ? query.action?.providerId : undefined
+    const actionModel = query.mode !== 'big-bang' ? query.action?.apiModel : undefined
+    const provider = resolveProvider(settings, actionProviderId)
 
-    // Resolve Claude thinking settings
-    let thinkingBudget: number | undefined
-    if (effectiveProvider === 'Claude') {
-        const actionThinking = query.mode !== 'big-bang' ? query.action?.thinking : undefined
-        const actionThinkingLevel = query.mode !== 'big-bang' ? query.action?.thinkingLevel : undefined
-        const isThinking = actionThinking ?? settings.claudeThinking
-        const thinkingLevel = actionThinkingLevel ?? settings.claudeThinkingLevel ?? 'medium'
-        if (isThinking) {
-            thinkingBudget = getThinkingBudget(thinkingLevel)
-        }
-    }
-
-    const engine = getEngine(effectiveProvider)
-    await engine.sendMessage({
+    await streamChat(actionModel ? { ...provider, model: actionModel } : provider, {
         signal: query.signal,
         rolePrompt,
         commandPrompt,
-        modelOverride: effectiveModel,
-        thinkingBudget,
         onMessage: async (message) => {
             await query.onMessage({ ...message, isWordMode })
         },

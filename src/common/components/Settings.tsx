@@ -1,29 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import _ from 'underscore'
-import { Tabs, Tab, StyledTabList, StyledTabPanel } from 'baseui-sd/tabs-motion'
+import { Tabs, Tab, StyledTabList, StyledTabPanel } from 'baseui/tabs-motion'
 import icon from '../assets/images/icon-large.png'
 import beams from '../assets/images/beams.jpg'
 import toast from 'react-hot-toast'
 import * as utils from '../utils'
 import { Client as Styletron } from 'styletron-engine-atomic'
 import { Provider as StyletronProvider } from 'styletron-react'
-import { BaseProvider, LightTheme } from 'baseui-sd'
-import { Input } from 'baseui-sd/input'
+import { BaseProvider } from 'baseui'
+import { Input } from 'baseui/input'
 import { createForm } from './Form'
-import { Button, ButtonProps } from 'baseui-sd/button'
-import { TranslateMode, APIModel } from '../translate'
-import { Select, Value, Option, Options } from 'baseui-sd/select'
-import { Combobox } from 'baseui-sd/combobox'
-import ChevronDown from 'baseui-sd/icon/chevron-down'
-import { SpinnerIcon } from './SpinnerIcon'
-import { Checkbox } from 'baseui-sd/checkbox'
+import { TranslateMode } from '../translate'
+import { Button, ButtonProps } from 'baseui/button'
+import { Select, Value, Option } from 'baseui/select'
+import { Checkbox } from 'baseui/checkbox'
 import { LangCode, supportedLanguages } from '../lang'
 import { useRecordHotkeys } from 'react-hotkeys-hook'
 import { createUseStyles } from 'react-jss'
 import clsx from 'clsx'
 import { ISettings, IThemedStyleProps, LanguageDetectionEngine, ProxyProtocol, ThemeType } from '../types'
 import { useTheme } from '../hooks/useTheme'
-import { IoCloseCircle, IoRefreshSharp, IoSettingsOutline } from 'react-icons/io5'
+import { IoCloseCircle, IoSettingsOutline } from 'react-icons/io5'
 import { useTranslation } from 'react-i18next'
 import AppConfig from '../../../package.json'
 import { useSettings } from '../hooks/useSettings'
@@ -34,38 +31,30 @@ import { TTSProvider } from '../tts/types'
 import { fetchEdgeVoices } from '../tts/edge-tts'
 import { fetchLocalVoices } from '../tts/local-tts'
 import { useThemeType } from '../hooks/useThemeType'
-import { Slider } from 'baseui-sd/slider'
+import { Slider } from 'baseui/slider'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { actionService } from '../services/action'
 import { Action } from '../internal-services/db'
 import { GlobalSuspense } from './GlobalSuspense'
 
-import { Provider, engineIcons, getEngine } from '../engines'
-import { IModel } from '../engines/interfaces'
+import { ProviderManager } from './ProviderManager'
+import type { ProviderConfig } from '../providers'
 import { PiTextbox } from 'react-icons/pi'
 import { BsKeyboard } from 'react-icons/bs'
 import { TbCloudNetwork } from 'react-icons/tb'
-import { Cell, Grid } from 'baseui-sd/layout-grid'
+import { Cell, Grid } from 'baseui/layout-grid'
 
 import useSWR from 'swr'
 
-import { Skeleton } from 'baseui-sd/skeleton'
+import { Skeleton } from 'baseui/skeleton'
 import { SpeakerIcon } from './SpeakerIcon'
 import Toaster from './Toaster'
 import { RxSpeakerLoud } from 'react-icons/rx'
 
-import { Textarea } from 'baseui-sd/textarea'
+import { Textarea } from 'baseui/textarea'
 import { ProxyTester } from './ProxyTester'
-import { CUSTOM_MODEL_ID } from '../constants'
 import { isMacOS } from '../utils'
 import NumberInput from './NumberInput'
-import { DurationPicker } from './DurationPicker'
-import {
-    getRecommendedOpenAIAPIPath,
-    OPENAI_CHAT_COMPLETIONS_API_PATH,
-    OPENAI_PREFERRED_DEFAULT_MODEL,
-    OPENAI_RESPONSES_API_PATH,
-} from '../openai-api-path'
 
 const langOptions: Value = supportedLanguages.reduce((acc, [id, label]) => {
     return [
@@ -216,35 +205,6 @@ function LanguageDetectionEngineSelector({ value, onChange, onBlur }: ILanguageD
                 { label: t('Google'), id: 'google' },
                 { label: t('Bing'), id: 'bing' },
                 { label: t('Local'), id: 'local' },
-            ]}
-        />
-    )
-}
-
-interface IThinkingLevelSelectorProps {
-    value?: string
-    onChange?: (value: string) => void
-    onBlur?: () => void
-}
-
-function ThinkingLevelSelector({ value, onChange, onBlur }: IThinkingLevelSelectorProps) {
-    const { t } = useTranslation()
-
-    return (
-        <Select
-            size='compact'
-            onBlur={onBlur}
-            searchable={false}
-            clearable={false}
-            value={value ? [{ id: value }] : [{ id: 'medium' }]}
-            onChange={(params) => {
-                onChange?.(params.value[0]?.id as string)
-                onBlur?.()
-            }}
-            options={[
-                { id: 'low', label: t('Low') },
-                { id: 'medium', label: t('Medium') },
-                { id: 'high', label: t('High') },
             ]}
         />
     )
@@ -789,260 +749,6 @@ function Ii18nSelector({ value, onChange, onBlur }: Ii18nSelectorProps) {
     )
 }
 
-interface APIModelSelectorProps {
-    currentProvider: Provider
-    provider: Provider
-    apiKey?: string
-    apiURL?: string
-    value?: string
-    onChange?: (value: string) => void
-    onBlur?: () => void
-}
-
-interface APIModelOption {
-    id: string
-    label: string
-    name: string
-    description?: string
-}
-
-export function APIModelSelector({
-    currentProvider,
-    provider,
-    apiKey,
-    apiURL,
-    value,
-    onChange,
-    onBlur,
-}: APIModelSelectorProps) {
-    const { t } = useTranslation()
-    const [isLoading, setIsLoading] = useState(false)
-    const [options, setOptions] = useState<APIModelOption[]>([])
-    const [errMsg, setErrMsg] = useState<string>()
-    const [isChatGPTNotLogin, setIsChatGPTNotLogin] = useState(false)
-    const [refreshFlag, refresh] = useReducer((x: number) => x + 1, 0)
-    const { theme } = useTheme()
-
-    useEffect(() => {
-        setIsChatGPTNotLogin(false)
-        setErrMsg('')
-        setOptions([])
-        if (provider !== currentProvider) {
-            return
-        }
-        const engine = getEngine(provider)
-        setIsLoading(true)
-        ;(async () => {
-            try {
-                const models = await engine.listModels(apiKey, apiURL)
-                setOptions(
-                    models.map((model: IModel) => ({
-                        id: model.id,
-                        // label lets the creatable machinery detect an exact
-                        // match and skip the redundant "Custom" entry
-                        label: model.id,
-                        name: model.name,
-                        description: model.description,
-                    }))
-                )
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } catch (e: any) {
-                if (
-                    provider === 'ChatGPT' &&
-                    e.message &&
-                    (e.message.includes('not login') || e.message.includes('Forbidden'))
-                ) {
-                    setIsChatGPTNotLogin(true)
-                }
-                setErrMsg(e.message)
-            } finally {
-                setIsLoading(false)
-            }
-        })()
-    }, [
-        apiKey,
-        apiURL,
-        currentProvider,
-        provider,
-        refreshFlag,
-        t,
-        theme.colors.contentPrimary,
-        theme.colors.contentTertiary,
-    ])
-
-    // Once the user has touched the input, never auto-fill again: filling
-    // the default back in the moment the field is cleared makes it
-    // impossible to delete the last character while editing.
-    const userEditedRef = useRef(false)
-    useEffect(() => {
-        userEditedRef.current = false
-    }, [currentProvider, provider])
-
-    useEffect(() => {
-        if (provider !== currentProvider || options.length === 0) {
-            return
-        }
-        // Only fill in a default when nothing was ever set: the combobox
-        // accepts free-typed model names, so an empty or unlisted value
-        // during editing is legitimate and must not be overridden.
-        if (value || userEditedRef.current) {
-            return
-        }
-        const optionIDs = options.map((option) => option.id)
-        const fallback =
-            provider === 'OpenAI' && optionIDs.includes(OPENAI_PREFERRED_DEFAULT_MODEL)
-                ? OPENAI_PREFERRED_DEFAULT_MODEL
-                : optionIDs.find((id) => id !== CUSTOM_MODEL_ID) ?? optionIDs[0]
-        if (fallback) {
-            onChange?.(fallback)
-        }
-    }, [currentProvider, onChange, options, provider, value])
-
-    return (
-        <div>
-            <div
-                style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 4,
-                }}
-            >
-                <div style={{ flexGrow: 1 }}>
-                    <Combobox
-                        size='compact'
-                        value={value ?? ''}
-                        onChange={(nextValue) => {
-                            userEditedRef.current = true
-                            onChange?.(nextValue as APIModel)
-                        }}
-                        onBlur={onBlur}
-                        options={(() => {
-                            const query = (value ?? '').toLowerCase()
-                            if (!query) {
-                                return options
-                            }
-                            const matched = options.filter(
-                                (option) =>
-                                    option.id.toLowerCase().includes(query) || option.name.toLowerCase().includes(query)
-                            )
-                            const exactMatch = options.some((option) => option.id.toLowerCase() === query)
-                            // A picked model or a free-typed name that matches
-                            // nothing should still let the user browse the
-                            // full list when reopening the dropdown.
-                            return matched.length > 0 && !exactMatch ? matched : options
-                        })()}
-                        mapOptionToString={(option: APIModelOption) => option.id}
-                        mapOptionToNode={({ option }: { isSelected: boolean; option: APIModelOption }) => (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 3,
-                                    paddingTop: 4,
-                                    paddingBottom: 4,
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        fontSize: '14px',
-                                        color: theme.colors.contentPrimary,
-                                    }}
-                                >
-                                    {option.name}
-                                </div>
-                                {option.description && (
-                                    <div
-                                        style={{
-                                            fontSize: '12px',
-                                            color: theme.colors.contentTertiary,
-                                        }}
-                                    >
-                                        {option.description}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        listBoxLabel={t('API Model')}
-                        overrides={{
-                            Input: {
-                                props: {
-                                    // A visible dropdown affordance; its click
-                                    // bubbles to the combobox container, which
-                                    // opens the listbox.
-                                    endEnhancer: <ChevronDown size={20} />,
-                                },
-                            },
-                            ListItem: {
-                                style: {
-                                    // The default list item height is fixed and
-                                    // too small for the two-line model entries,
-                                    // making rows overlap.
-                                    height: 'auto',
-                                    paddingTop: '6px',
-                                    paddingBottom: '6px',
-                                },
-                                props: {
-                                    // WebKit reports relatedTarget=null when a
-                                    // non-focusable list item is clicked, so the
-                                    // combobox mistakes the click for an outside
-                                    // blur; the blur-save then races the option
-                                    // click and reverts the picked value. Keep
-                                    // focus in the input instead.
-                                    onMouseDown: (event: React.MouseEvent) => {
-                                        event.preventDefault()
-                                    },
-                                },
-                            },
-                        }}
-                    />
-                </div>
-                {isLoading && <SpinnerIcon size={14} />}
-                <Button
-                    size='compact'
-                    kind='secondary'
-                    onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        refresh()
-                    }}
-                >
-                    <IoRefreshSharp size={16} />
-                </Button>
-            </div>
-            <div
-                style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
-                }}
-            >
-                {errMsg && (
-                    <div
-                        style={{
-                            color: 'red',
-                        }}
-                    >
-                        {errMsg}
-                    </div>
-                )}
-                {isChatGPTNotLogin && (
-                    <div
-                        style={{
-                            color: theme.colors.contentPrimary,
-                        }}
-                    >
-                        <span>{t('Please login to ChatGPT Web')}: </span>
-                        <a href='https://chat.openai.com' target='_blank' rel='noreferrer' style={linkStyle}>
-                            Login
-                        </a>
-                    </div>
-                )}
-            </div>
-        </div>
-    )
-}
-
 interface AutoTranslateCheckboxProps {
     value?: boolean
     onChange?: (value: boolean) => void
@@ -1349,116 +1055,38 @@ function HotkeyRecorder({ value, onChange, onBlur, testId }: IHotkeyRecorderProp
     )
 }
 
-interface IAddProviderIconsProps {
-    options: Options
-    currentProvider?: Provider
-    theme: typeof LightTheme
-}
-
-const addProviderIcons = ({ options }: IAddProviderIconsProps) => {
-    if (!Array.isArray(options)) {
-        return options
-    }
-    return options.map((item) => {
-        if (typeof item.label !== 'string') {
-            return item
-        }
-        const icon = engineIcons[item.id as Provider]
-        if (!icon) {
-            return item
-        }
-        const label = (
-            <div
-                style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                }}
-            >
-                {React.createElement(icon, { size: 10 }, [])}
-                {item.label}
-            </div>
-        )
-        return {
-            ...item,
-            label,
-        }
-    })
-}
-
 interface IProviderSelectorProps {
-    value?: Provider
-    onChange?: (value: Provider) => void
+    value?: string
+    onChange?: (value: string) => void
 }
 
+/**
+ * Picks one of the user's configured provider instances by id.
+ *
+ * Ids rather than vendor names, so an action can target one of several
+ * instances of the same vendor — a second key, a different endpoint, or the
+ * same model at a different thinking level.
+ */
 export function ProviderSelector({ value, onChange }: IProviderSelectorProps) {
-    const { theme } = useTheme()
     const { t } = useTranslation()
+    const { settings } = useSettings()
 
-    const options = utils.isDesktopApp()
-        ? ([
-              { label: 'OpenAI', id: 'OpenAI' },
-              { label: 'TeamoRouter', id: 'TeamoRouter' },
-              { label: 'OpenRouter', id: 'OpenRouter' },
-              { label: 'Claude', id: 'Claude' },
-              { label: `Kimi (${t('Free')})`, id: 'Kimi' },
-              { label: `${t('ChatGLM')} (${t('Free')})`, id: 'ChatGLM' },
-              { label: 'Cohere', id: 'Cohere' },
-              { label: `Ollama (${t('Local Model')})`, id: 'Ollama' },
-              { label: 'Gemini', id: 'Gemini' },
-              // { label: 'ChatGPT (Web)', id: 'ChatGPT' },
-              { label: 'Azure', id: 'Azure' },
-              { label: 'MiniMax', id: 'MiniMax' },
-              { label: 'Moonshot', id: 'Moonshot' },
-              { label: 'Groq', id: 'Groq' },
-              { label: 'DeepSeek', id: 'DeepSeek' },
-              { label: 'Cerebras', id: 'Cerebras' },
-          ] as {
-              label: string
-              id: Provider
-          }[])
-        : ([
-              { label: 'OpenAI', id: 'OpenAI' },
-              { label: 'TeamoRouter', id: 'TeamoRouter' },
-              { label: 'OpenRouter', id: 'OpenRouter' },
-              { label: 'Claude', id: 'Claude' },
-              { label: `Kimi (${t('Free')})`, id: 'Kimi' },
-              { label: `${t('ChatGLM')} (${t('Free')})`, id: 'ChatGLM' },
-              { label: 'ChatGPT (Web)', id: 'ChatGPT' },
-              { label: 'Cohere', id: 'Cohere' },
-              { label: 'Gemini', id: 'Gemini' },
-              { label: 'Azure', id: 'Azure' },
-              { label: 'MiniMax', id: 'MiniMax' },
-              { label: 'Moonshot', id: 'Moonshot' },
-              { label: 'Groq', id: 'Groq' },
-              { label: 'DeepSeek', id: 'DeepSeek' },
-              { label: 'Cerebras', id: 'Cerebras' },
-          ] as {
-              label: string
-              id: Provider
-          }[])
+    const options = (settings?.providers ?? []).map((provider) => ({
+        id: provider.id,
+        label: provider.model ? `${provider.name} · ${provider.model}` : provider.name,
+    }))
 
     return (
         <Select
             size='compact'
             searchable={false}
-            clearable={false}
-            value={
-                value && [
-                    {
-                        id: value,
-                    },
-                ]
-            }
+            clearable
+            placeholder={options.length ? t('Use the default provider') : t('No providers configured')}
+            value={value ? [{ id: value }] : []}
             onChange={(params) => {
-                onChange?.(params.value[0].id as Provider | 'OpenAI')
+                onChange?.(String(params.value[0]?.id ?? ''))
             }}
-            options={addProviderIcons({
-                options,
-                currentProvider: value,
-                theme,
-            })}
+            options={options}
         />
     )
 }
@@ -1494,6 +1122,13 @@ interface IPerActionModelConfigProps {
 // Persist selected action across Settings open/close cycles
 let lastSelectedActionId: number | undefined
 
+/**
+ * Lets one action opt out of the default provider.
+ *
+ * Only a provider and an optional model live here now. Thinking depth is a
+ * property of a provider instance, so an action that wants different reasoning
+ * points at a second instance instead of carrying its own duplicate knobs.
+ */
 function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
     const { t } = useTranslation()
     const { theme } = useTheme()
@@ -1501,59 +1136,46 @@ function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
     const [selectedActionId, setSelectedActionId] = useState<number | undefined>(lastSelectedActionId)
     const [selectedAction, setSelectedAction] = useState<Action | undefined>(undefined)
     const [useCustomModel, setUseCustomModel] = useState(false)
-    const [actionProvider, setActionProvider] = useState<Provider | undefined>(undefined)
+    const [actionProviderId, setActionProviderId] = useState<string | undefined>(undefined)
     const [actionModel, setActionModel] = useState<string | undefined>(undefined)
-    const [isCustomModelName, setIsCustomModelName] = useState(false)
-    const [actionThinking, setActionThinking] = useState(false)
-    const [actionThinkingLevel, setActionThinkingLevel] = useState<string>('medium')
 
-    // When actions load, default to first action (or restore last selection)
     useEffect(() => {
         if (actions && actions.length > 0 && selectedActionId === undefined) {
             setSelectedActionId(actions[0].id)
         }
     }, [actions, selectedActionId])
 
-    // Persist selected action for next Settings open
     useEffect(() => {
         lastSelectedActionId = selectedActionId
     }, [selectedActionId])
 
-    // When selected action changes, load its settings
     useEffect(() => {
         if (!actions || selectedActionId === undefined) return
         const action = actions.find((a) => a.id === selectedActionId)
         setSelectedAction(action)
         if (action) {
-            const hasCustom = !!(action.provider || action.apiModel)
-            setUseCustomModel(hasCustom)
-            setActionProvider(action.provider || settings.provider)
+            setUseCustomModel(!!(action.providerId || action.apiModel))
+            setActionProviderId(action.providerId || settings.defaultProviderId)
             setActionModel(action.apiModel || '')
-            setIsCustomModelName(false)
-            setActionThinking(action.thinking ?? false)
-            setActionThinkingLevel(action.thinkingLevel ?? 'medium')
         }
-    }, [actions, selectedActionId, settings.provider])
+    }, [actions, selectedActionId, settings.defaultProviderId])
 
     const handleSave = useCallback(
-        async (provider?: Provider, model?: string, enabled?: boolean, thinking?: boolean, thinkingLevel?: string) => {
+        async (providerId?: string, model?: string, enabled?: boolean) => {
             if (!selectedAction) return
             const shouldEnable = enabled !== undefined ? enabled : useCustomModel
             if (shouldEnable) {
                 await actionService.update(selectedAction, {
-                    provider: provider ?? actionProvider,
+                    providerId: providerId ?? actionProviderId,
                     apiModel: model ?? actionModel,
-                    thinking: thinking ?? actionThinking,
-                    thinkingLevel: (thinkingLevel ?? actionThinkingLevel) as 'low' | 'medium' | 'high',
                 })
             } else {
-                // Explicitly clear per-action overrides using clearFields
                 await actionService.update(selectedAction, {
-                    clearFields: ['provider', 'apiModel', 'thinking', 'thinkingLevel'],
+                    clearFields: ['providerId', 'apiModel'],
                 })
             }
         },
-        [selectedAction, useCustomModel, actionProvider, actionModel, actionThinking, actionThinkingLevel]
+        [selectedAction, useCustomModel, actionProviderId, actionModel]
     )
 
     const actionOptions = useMemo(() => {
@@ -1563,8 +1185,6 @@ function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
             label: action.mode ? t(action.name) : action.name,
         }))
     }, [actions, t])
-
-    const apiKey = actionProvider ? utils.getAPIKeyForProvider(actionProvider, settings) : undefined
 
     return (
         <div
@@ -1601,8 +1221,7 @@ function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
                     clearable={false}
                     value={selectedActionId !== undefined ? [{ id: selectedActionId }] : []}
                     onChange={(params) => {
-                        const id = params.value[0]?.id as number
-                        setSelectedActionId(id)
+                        setSelectedActionId(params.value[0]?.id as number)
                     }}
                     options={actionOptions}
                 />
@@ -1615,7 +1234,7 @@ function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
                             onChange={(e) => {
                                 const checked = (e.target as HTMLInputElement).checked
                                 setUseCustomModel(checked)
-                                handleSave(actionProvider, actionModel, checked)
+                                handleSave(actionProviderId, actionModel, checked)
                             }}
                         >
                             <span style={{ fontSize: '13px' }}>{t('Use custom model for this action')}</span>
@@ -1634,11 +1253,11 @@ function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
                                     {t('Action Provider')}
                                 </div>
                                 <ProviderSelector
-                                    value={actionProvider}
-                                    onChange={(provider) => {
-                                        setActionProvider(provider)
+                                    value={actionProviderId}
+                                    onChange={(providerId) => {
+                                        setActionProviderId(providerId)
                                         setActionModel('')
-                                        handleSave(provider, '', true)
+                                        handleSave(providerId, '', true)
                                     }}
                                 />
                             </div>
@@ -1652,99 +1271,14 @@ function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
                                 >
                                     {t('Action Model')}
                                 </div>
-                                <APIModelSelector
-                                    currentProvider={actionProvider || settings.provider}
-                                    provider={actionProvider || settings.provider}
-                                    apiKey={apiKey}
-                                    value={isCustomModelName ? CUSTOM_MODEL_ID : actionModel}
-                                    onChange={(model) => {
-                                        if (model === CUSTOM_MODEL_ID) {
-                                            setIsCustomModelName(true)
-                                            setActionModel('')
-                                        } else {
-                                            setIsCustomModelName(false)
-                                            setActionModel(model)
-                                            handleSave(actionProvider, model, true)
-                                        }
-                                    }}
+                                <Input
+                                    size='compact'
+                                    placeholder={t('Leave empty to use the provider default') ?? ''}
+                                    value={actionModel || ''}
+                                    onChange={(e) => setActionModel((e.target as HTMLInputElement).value)}
+                                    onBlur={() => handleSave(actionProviderId, actionModel, true)}
                                 />
                             </div>
-                            {isCustomModelName && (
-                                <div style={{ marginBottom: '8px' }}>
-                                    <div
-                                        style={{
-                                            fontSize: '12px',
-                                            marginBottom: '4px',
-                                            color: theme.colors.contentSecondary,
-                                        }}
-                                    >
-                                        {t('Custom Model Name')}
-                                    </div>
-                                    <Input
-                                        size='compact'
-                                        placeholder='e.g. claude-sonnet-4-20250514'
-                                        value={actionModel || ''}
-                                        onChange={(e) => {
-                                            const val = (e.target as HTMLInputElement).value
-                                            setActionModel(val)
-                                        }}
-                                        onBlur={() => {
-                                            handleSave(actionProvider, actionModel, true)
-                                        }}
-                                    />
-                                </div>
-                            )}
-                            {actionProvider === 'Claude' && (
-                                <>
-                                    <div style={{ marginBottom: '8px' }}>
-                                        <Checkbox
-                                            checked={actionThinking}
-                                            onChange={(e) => {
-                                                const checked = (e.target as HTMLInputElement).checked
-                                                setActionThinking(checked)
-                                                handleSave(
-                                                    actionProvider,
-                                                    actionModel,
-                                                    true,
-                                                    checked,
-                                                    actionThinkingLevel
-                                                )
-                                            }}
-                                        >
-                                            <span style={{ fontSize: '13px' }}>{t('Enable Extended Thinking')}</span>
-                                        </Checkbox>
-                                    </div>
-                                    {actionThinking && (
-                                        <div style={{ marginBottom: '8px' }}>
-                                            <div
-                                                style={{
-                                                    fontSize: '12px',
-                                                    marginBottom: '4px',
-                                                    color: theme.colors.contentSecondary,
-                                                }}
-                                            >
-                                                {t('Thinking Level')}
-                                            </div>
-                                            <Select
-                                                size='compact'
-                                                searchable={false}
-                                                clearable={false}
-                                                options={[
-                                                    { id: 'low', label: t('Low') },
-                                                    { id: 'medium', label: t('Medium') },
-                                                    { id: 'high', label: t('High') },
-                                                ]}
-                                                value={[{ id: actionThinkingLevel }]}
-                                                onChange={(params) => {
-                                                    const level = params.value[0]?.id as string
-                                                    setActionThinkingLevel(level)
-                                                    handleSave(actionProvider, actionModel, true, actionThinking, level)
-                                                }}
-                                            />
-                                        </div>
-                                    )}
-                                </>
-                            )}
                         </>
                     ) : (
                         <div
@@ -1754,7 +1288,7 @@ function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
                                 fontStyle: 'italic',
                             }}
                         >
-                            {t('Using global settings')}
+                            {t('Using the default provider')}
                         </div>
                     )}
                 </>
@@ -1837,43 +1371,48 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
         }
     }, [isTauri, settings, i18n])
 
-    const onChange = useCallback(
-        (changes: Partial<ISettings>, values_: ISettings) => {
-            let nextValues = values_
-            const shouldRecomputeOpenAIPath =
-                values_.provider === 'OpenAI' &&
-                (changes.provider !== undefined ||
-                    changes.apiModel !== undefined ||
-                    (values_.apiModel === CUSTOM_MODEL_ID && changes.customModelName !== undefined))
+    /**
+     * `onValuesChange` reports the registered fields only — `getFieldsValue()`
+     * projects the store through the mounted `FormItem`s. Anything the form
+     * holds but does not render as a field, the provider list above all, is
+     * therefore absent, and replacing `values` with it blanked the provider
+     * editor out on every unrelated edit (a theme switch, a language change).
+     * Merging keeps those keys; the settings on disk were never affected,
+     * because `setSettings` writes a partial.
+     */
+    const onChange = useCallback((_changes: Partial<ISettings>, values_: ISettings) => {
+        setValues((prev) => ({ ...prev, ...values_ }))
+    }, [])
 
-            if (shouldRecomputeOpenAIPath) {
-                const selectedModel =
-                    values_.apiModel === CUSTOM_MODEL_ID ? values_.customModelName ?? '' : values_.apiModel
-                const recommendedPath = getRecommendedOpenAIAPIPath(selectedModel)
-                const normalizedPath =
-                    recommendedPath === OPENAI_RESPONSES_API_PATH
-                        ? OPENAI_RESPONSES_API_PATH
-                        : OPENAI_CHAT_COMPLETIONS_API_PATH
-                if (nextValues.apiURLPath !== normalizedPath) {
-                    nextValues = {
-                        ...nextValues,
-                        apiURLPath: normalizedPath,
-                    }
-                    form.setFieldsValue({
-                        apiURLPath: normalizedPath,
-                    })
-                }
-            }
-
-            setValues(nextValues)
+    /**
+     * The provider list edits itself outside the form, so it has to write back
+     * through the form as well as persist: leaving it out of `form` would make
+     * the next unrelated field change overwrite it with the stale value.
+     */
+    const handleProvidersChange = useCallback(
+        (providers: ProviderConfig[], defaultProviderId?: string) => {
+            const nextDefault =
+                defaultProviderId && providers.some((p) => p.id === defaultProviderId)
+                    ? defaultProviderId
+                    : providers[0]?.id
+            form.setFieldsValue({ providers, defaultProviderId: nextDefault })
+            setValues((prev) => {
+                const next = { ...prev, providers, defaultProviderId: nextDefault }
+                void utils.setSettings({ providers, defaultProviderId: nextDefault })
+                return next
+            })
         },
         [form]
     )
 
     const onSubmit = useCallback(
-        async (data: ISettings) => {
+        async (submitted: ISettings) => {
             setLoading(true)
             const oldSettings = await utils.getSettings()
+            // Same projection as `onChange`: what the form hands back covers the
+            // rendered fields only, so save it over the state that also holds
+            // the provider list rather than in place of it.
+            const data: ISettings = { ...valuesRef.current, ...submitted }
             if (isTauri) {
                 try {
                     const {
@@ -1911,7 +1450,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
     )
 
     const onBlur = useCallback(async () => {
-        if (values.apiKeys && !_.isEqual(values, prevValues)) {
+        if (!_.isEqual(values, prevValues)) {
             await utils.setSettings(values)
             setPrevValues(values)
         }
@@ -2026,16 +1565,26 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
 
     console.debug('render settings')
 
+    // The popup card (content script, and the userscript that shares its entry)
+    // caps its own height and there is no window scroll behind it, so the pane has
+    // to be the scroll container. `flex: 1` + `min-height: 0` bound it to the height
+    // the card actually leaves for it — see `InnerContainer`.
+    const inPopupCard = utils.isBrowserExtensionContentScript() || utils.isUserscript()
+
     return (
         <div
             style={{
                 paddingTop: utils.isBrowserExtensionOptions() ? undefined : '136px',
-                paddingBottom: utils.isBrowserExtensionOptions() ? undefined : '32px',
+                // The translator's 42px footer floats over the pane; without room for
+                // it the last setting can never be scrolled clear of it.
+                paddingBottom: utils.isBrowserExtensionOptions() ? undefined : inPopupCard ? '52px' : '32px',
                 background: isDesktopApp ? 'transparent' : theme.colors.backgroundPrimary,
                 minWidth: isDesktopApp ? 450 : 400,
-                maxHeight: utils.isUserscript() ? 'calc(100vh - 32px)' : undefined,
-                overflow: utils.isUserscript() ? 'auto' : undefined,
+                flex: inPopupCard ? '1 1 auto' : undefined,
+                minHeight: inPopupCard ? 0 : undefined,
+                overflowY: inPopupCard ? 'auto' : undefined,
             }}
+            onScroll={inPopupCard ? (e) => setIsScrolled(e.currentTarget.scrollTop > 0) : undefined}
             data-testid='settings-container'
         >
             <nav
@@ -2199,810 +1748,23 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         <FormItem name='i18n' label={t('i18n')}>
                             <Ii18nSelector onBlur={onBlur} />
                         </FormItem>
-                        <FormItem
-                            name='provider'
-                            label={t('Default service provider')}
-                            required
-                            caption={
-                                values.provider === 'Ollama' ? (
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://github.com/ollama/ollama#ollama'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            Ollama Homepage
-                                        </a>{' '}
-                                        {t('to learn how to install and setup.')}
-                                    </div>
-                                ) : undefined
-                            }
-                        >
-                            <ProviderSelector />
-                        </FormItem>
-                        <div
-                            style={{
-                                display: values.provider === 'Ollama' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                name='ollamaAPIURL'
-                                label={t('API URL')}
-                                required={values.provider === 'Ollama'}
-                                caption={t('Generally, there is no need to modify this item.')}
-                            >
-                                <Input size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='ollamaModelLifetimeInMemory'
-                                label={t('The survival time of the Ollama model in memory')}
-                                required={values.provider === 'Ollama'}
-                            >
-                                <DurationPicker size='compact' />
-                            </FormItem>
-                            <FormItem
-                                name='ollamaAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'Ollama'}
-                                caption={
-                                    <div>
-                                        <div>
-                                            {t(
-                                                'Model needs to first use the `ollama pull` command to download locally, please view all models from this page:'
-                                            )}{' '}
-                                            <a
-                                                target='_blank'
-                                                href='https://ollama.com/library'
-                                                rel='noreferrer'
-                                                style={linkStyle}
-                                            >
-                                                Models
-                                            </a>
-                                        </div>
-                                    </div>
-                                }
-                            >
-                                <APIModelSelector provider='Ollama' currentProvider={values.provider} onBlur={onBlur} />
-                            </FormItem>
+                        <div style={{ marginBottom: '14px' }}>
                             <div
                                 style={{
-                                    display: values.ollamaAPIModel === CUSTOM_MODEL_ID ? 'block' : 'none',
+                                    fontSize: '12px',
+                                    fontWeight: 500,
+                                    marginBottom: '6px',
+                                    color: theme.colors.contentSecondary,
                                 }}
                             >
-                                <FormItem
-                                    name='ollamaCustomModelName'
-                                    label={t('Custom Model Name')}
-                                    required={values.provider === 'Ollama' && values.ollamaAPIModel === CUSTOM_MODEL_ID}
-                                >
-                                    <Input autoComplete='off' size='compact' />
-                                </FormItem>
+                                {t('Providers')}
                             </div>
+                            <ProviderManager
+                                providers={values.providers ?? []}
+                                defaultProviderId={values.defaultProviderId}
+                                onChange={handleProvidersChange}
+                            />
                         </div>
-                        <div
-                            style={{
-                                display: values.provider === 'Groq' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'Groq'}
-                                name='groqAPIKey'
-                                label='Groq API Key'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://console.groq.com/keys'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            GroqCloud
-                                        </a>{' '}
-                                        {t('to get your API Key.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem name='groqAPIModel' label={t('API Model')} required={values.provider === 'Groq'}>
-                                <APIModelSelector
-                                    provider='Groq'
-                                    currentProvider={values.provider}
-                                    apiKey={values.groqAPIKey}
-                                    apiURL={values.groqAPIURL}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                            <div
-                                style={{
-                                    display: values.groqAPIModel === CUSTOM_MODEL_ID ? 'block' : 'none',
-                                }}
-                            >
-                                <FormItem
-                                    name='groqCustomModelName'
-                                    label={t('Custom Model Name')}
-                                    required={values.provider === 'Groq' && values.groqAPIModel === CUSTOM_MODEL_ID}
-                                >
-                                    <Input autoComplete='off' size='compact' />
-                                </FormItem>
-                            </div>
-                            <FormItem
-                                name='groqAPIURL'
-                                label={t('API URL')}
-                                required={values.provider === 'Groq'}
-                                caption={t('Generally, there is no need to modify this item.')}
-                            >
-                                <Input size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='groqAPIURLPath'
-                                label={t('API URL Path')}
-                                required={values.provider === 'Groq'}
-                                caption={t('Generally, there is no need to modify this item.')}
-                            >
-                                <Input size='compact' onBlur={onBlur} />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'Claude' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'Claude'}
-                                name='claudeAPIKey'
-                                label='Claude API Key'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://console.anthropic.com/settings/keys'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            Anthropic Console
-                                        </a>{' '}
-                                        {t('to get your API Key.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='claudeAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'Claude'}
-                            >
-                                <APIModelSelector
-                                    provider='Claude'
-                                    currentProvider={values.provider}
-                                    apiKey={values.claudeAPIKey}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                            <div
-                                style={{
-                                    display: values.claudeAPIModel === CUSTOM_MODEL_ID ? 'block' : 'none',
-                                }}
-                            >
-                                <FormItem
-                                    name='claudeCustomModelName'
-                                    label={t('Custom Model Name')}
-                                    required={values.provider === 'Claude' && values.claudeAPIModel === CUSTOM_MODEL_ID}
-                                >
-                                    <Input autoComplete='off' size='compact' />
-                                </FormItem>
-                            </div>
-                            <FormItem name='claudeThinking' label={t('Enable Extended Thinking')}>
-                                <MyCheckbox onBlur={onBlur} />
-                            </FormItem>
-                            <div
-                                style={{
-                                    display: values.claudeThinking ? 'block' : 'none',
-                                }}
-                            >
-                                <FormItem name='claudeThinkingLevel' label={t('Thinking Level')}>
-                                    <ThinkingLevelSelector onBlur={onBlur} />
-                                </FormItem>
-                            </div>
-                            <FormItem
-                                name='claudeAPIURL'
-                                label={t('API URL')}
-                                required={values.provider === 'Claude'}
-                                caption={t('Generally, there is no need to modify this item.')}
-                            >
-                                <Input size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='claudeAPIURLPath'
-                                label={t('API URL Path')}
-                                required={values.provider === 'Claude'}
-                                caption={t('Generally, there is no need to modify this item.')}
-                            >
-                                <Input size='compact' onBlur={onBlur} />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'Kimi' && utils.isDesktopApp() ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'Kimi' && utils.isDesktopApp()}
-                                name='kimiRefreshToken'
-                                label='Kimi Refresh Token'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href={
-                                                values?.i18n?.toLowerCase().includes('zh')
-                                                    ? 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/kimi-cn.md'
-                                                    : 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/kimi.md'
-                                            }
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            Tutorial
-                                        </a>{' '}
-                                        {t('to get your refresh_token.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                required={values.provider === 'Kimi' && utils.isDesktopApp()}
-                                name='kimiAccessToken'
-                                label='Kimi Access Token'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href={
-                                                values?.i18n?.toLowerCase().includes('zh')
-                                                    ? 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/kimi-cn.md'
-                                                    : 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/kimi.md'
-                                            }
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            Tutorial
-                                        </a>{' '}
-                                        {t('to get your access_token.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'ChatGLM' && utils.isDesktopApp() ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'ChatGLM' && utils.isDesktopApp()}
-                                name='chatglmRefreshToken'
-                                label={`${t('ChatGLM')} Refresh Token`}
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href={
-                                                values?.i18n?.toLowerCase().includes('zh')
-                                                    ? 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/chatglm-cn.md'
-                                                    : 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/chatglm.md'
-                                            }
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            Tutorial
-                                        </a>{' '}
-                                        {t('to get your refresh_token.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                required={values.provider === 'ChatGLM' && utils.isDesktopApp()}
-                                name='chatglmAccessToken'
-                                label={`${t('ChatGLM')} Token`}
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href={
-                                                values?.i18n?.toLowerCase().includes('zh')
-                                                    ? 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/chatglm-cn.md'
-                                                    : 'https://github.com/nextai-translator/nextai-translator/blob/main/docs/chatglm.md'
-                                            }
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            Tutorial
-                                        </a>{' '}
-                                        {t('to get your token.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'Gemini' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem name='geminiAPIURL' label={t('API URL')} required={values.provider === 'Gemini'}>
-                                <Input size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                required={values.provider === 'Gemini'}
-                                name='geminiAPIKey'
-                                label='Gemini API Key'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://makersuite.google.com/app/apikey'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            Google AI Studio
-                                        </a>{' '}
-                                        {t('to get your API Key.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='geminiAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'Gemini'}
-                            >
-                                <APIModelSelector
-                                    provider='Gemini'
-                                    currentProvider={values.provider}
-                                    apiKey={values.geminiAPIKey}
-                                    apiURL={values.geminiAPIURL}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'Cohere' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'Cohere'}
-                                name='cohereAPIKey'
-                                label='Cohere API Key'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://dashboard.cohere.com/api-keys'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            Cohere Dashboard
-                                        </a>{' '}
-                                        {t('to get your API Key.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='cohereAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'Cohere'}
-                            >
-                                <APIModelSelector
-                                    provider='Cohere'
-                                    currentProvider={values.provider}
-                                    apiKey={values.cohereAPIKey}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'DeepSeek' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'DeepSeek'}
-                                name='deepSeekAPIKey'
-                                label='DeepSeek API Key'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://platform.deepseek.com/api_keys'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            DeepSeek Dashboard
-                                        </a>{' '}
-                                        {t('to get your API Key.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='deepSeekAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'DeepSeek'}
-                            >
-                                <APIModelSelector
-                                    provider='DeepSeek'
-                                    currentProvider={values.provider}
-                                    apiKey={values.deepSeekAPIKey}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'OpenAI' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'OpenAI'}
-                                name='apiKeys'
-                                label={t('API Key')}
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://platform.openai.com/account/api-keys'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            {t('OpenAI page')}
-                                        </a>{' '}
-                                        {t(
-                                            'to get your API Key. You can separate multiple API Keys with English commas to achieve quota doubling and load balancing.'
-                                        )}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' name='apiKey' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='noModelsAPISupport'
-                                label={t('No models API support')}
-                                caption={t(
-                                    "Some providers claiming to be compatible with OpenAI's API do not actually support OpenAI's standard model API. Therefore, we have no choice but to offer this option. If you choose this option (and then need to click the save button), we will not attempt to dynamically fetch the latest model list from the model API, but will only use a fixed model list and custom models."
-                                )}
-                            >
-                                <MyCheckbox onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem name='apiModel' label={t('API Model')} required={values.provider === 'OpenAI'}>
-                                <APIModelSelector
-                                    provider='OpenAI'
-                                    currentProvider={values.provider}
-                                    apiKey={values.apiKeys}
-                                    apiURL={values.apiURL}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                            <div
-                                style={{
-                                    display: values.apiModel === CUSTOM_MODEL_ID ? 'block' : 'none',
-                                }}
-                            >
-                                <FormItem
-                                    name='customModelName'
-                                    label={t('Custom Model Name')}
-                                    required={values.provider === 'OpenAI' && values.apiModel === CUSTOM_MODEL_ID}
-                                >
-                                    <Input autoComplete='off' size='compact' />
-                                </FormItem>
-                            </div>
-                            <FormItem name='apiURL' label={t('API URL')} required={values.provider === 'OpenAI'}>
-                                <Input size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='apiURLPath'
-                                label={t('API URL Path')}
-                                required={values.provider === 'OpenAI'}
-                            >
-                                <Input size='compact' />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'Azure' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'Azure'}
-                                name='azureAPIKeys'
-                                label={t('API Key')}
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://learn.microsoft.com/en-us/azure/cognitive-services/openai/chatgpt-quickstart?tabs=command-line&pivots=rest-api#retrieve-key-and-endpoint'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            {t('Azure OpenAI Service page')}
-                                        </a>{' '}
-                                        {t(
-                                            'to get your API Key. You can separate multiple API Keys with English commas to achieve quota doubling and load balancing.'
-                                        )}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='azureAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'Azure'}
-                            >
-                                <APIModelSelector
-                                    provider='Azure'
-                                    currentProvider={values.provider}
-                                    apiKey={values.azureAPIKeys}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                            <FormItem name='azureAPIURL' label={t('API URL')} required={values.provider === 'Azure'}>
-                                <Input size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='azureAPIURLPath'
-                                label={t('API URL Path')}
-                                required={values.provider === 'Azure'}
-                            >
-                                <Input size='compact' />
-                            </FormItem>
-                            <FormItem name='azMaxWords' label='Max Tokens' required={values.provider === 'Azure'}>
-                                <NumberInput size='compact' />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'ChatGPT' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                name='chatgptModel'
-                                label={t('API Model')}
-                                required={values.provider === 'ChatGPT'}
-                            >
-                                <APIModelSelector
-                                    provider='ChatGPT'
-                                    currentProvider={values.provider}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'MiniMax' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'MiniMax'}
-                                name='miniMaxAPIKey'
-                                label='MiniMax API Key'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://platform.minimaxi.com/user-center/basic-information/interface-key'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            {t('MiniMax page')}
-                                        </a>{' '}
-                                        {t('to get your API Key.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='miniMaxAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'MiniMax'}
-                            >
-                                <APIModelSelector
-                                    provider='MiniMax'
-                                    currentProvider={values.provider}
-                                    onBlur={onBlur}
-                                    apiKey={values.miniMaxAPIKey}
-                                />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'Moonshot' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'Moonshot'}
-                                name='moonshotAPIKey'
-                                label='Moonshot API Key'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://www.moonshot.cn/'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            Moonshot Page
-                                        </a>{' '}
-                                        {t('to get your API Key.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='moonshotAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'Moonshot'}
-                            >
-                                <APIModelSelector
-                                    provider='Moonshot'
-                                    currentProvider={values.provider}
-                                    onBlur={onBlur}
-                                    apiKey={values.moonshotAPIKey}
-                                />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'Cerebras' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'Cerebras'}
-                                name='cerebrasAPIKey'
-                                label='Cerebras API Key'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://cloud.cerebras.ai/'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            Cerebras Page
-                                        </a>{' '}
-                                        {t('to get your API Key.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='cerebrasAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'Cerebras'}
-                            >
-                                <APIModelSelector
-                                    provider='Cerebras'
-                                    currentProvider={values.provider}
-                                    apiKey={values.cerebrasAPIKey}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'TeamoRouter' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'TeamoRouter'}
-                                name='teamoRouterAPIKey'
-                                label='TeamoRouter API Key'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://teamorouter.com/?utm_source=nextai_translator&utm_medium=referral&utm_campaign=ai_directory'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            TeamoRouter Page
-                                        </a>{' '}
-                                        {t('to get your API Key.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='teamoRouterAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'TeamoRouter'}
-                            >
-                                <APIModelSelector
-                                    provider='TeamoRouter'
-                                    currentProvider={values.provider}
-                                    apiKey={values.teamoRouterAPIKey}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                        </div>
-                        <div
-                            style={{
-                                display: values.provider === 'OpenRouter' ? 'block' : 'none',
-                            }}
-                        >
-                            <FormItem
-                                required={values.provider === 'OpenRouter'}
-                                name='openRouterAPIKey'
-                                label='OpenRouter API Key'
-                                caption={
-                                    <div>
-                                        {t('Go to the')}{' '}
-                                        <a
-                                            target='_blank'
-                                            href='https://openrouter.ai/settings/keys'
-                                            rel='noreferrer'
-                                            style={linkStyle}
-                                        >
-                                            OpenRouter Page
-                                        </a>{' '}
-                                        {t('to get your API Key.')}
-                                    </div>
-                                }
-                            >
-                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
-                            </FormItem>
-                            <FormItem
-                                name='openRouterAPIModel'
-                                label={t('API Model')}
-                                required={values.provider === 'OpenRouter'}
-                            >
-                                <APIModelSelector
-                                    provider='OpenRouter'
-                                    currentProvider={values.provider}
-                                    apiKey={values.openRouterAPIKey}
-                                    onBlur={onBlur}
-                                />
-                            </FormItem>
-                        </div>
-                        <FormItem
-                            name='thinkingEnabled'
-                            label={t('Enable Thinking')}
-                            caption={t(
-                                'Disable thinking for faster translations. Reasoning models think by default, which significantly slows down simple tasks.'
-                            )}
-                        >
-                            <MyCheckbox onBlur={onBlur} />
-                        </FormItem>
                         <FormItem name='defaultTranslateMode' label={t('Default Action')}>
                             <TranslateModeSelector onBlur={onBlur} />
                         </FormItem>

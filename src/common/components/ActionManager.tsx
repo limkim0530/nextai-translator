@@ -7,18 +7,19 @@ import { IThemedStyleProps } from '../types'
 import { useTheme } from '../hooks/useTheme'
 import { useTranslation } from 'react-i18next'
 import { format } from 'date-fns'
-import { Button } from 'baseui-sd/button'
-import { List, arrayMove } from 'baseui-sd/dnd-list'
+import { Button } from 'baseui/button'
+import { List, arrayMove } from 'baseui/dnd-list'
 import { RiDeleteBinLine } from 'react-icons/ri'
 import { createElement, useCallback, useReducer, useState } from 'react'
 import * as mdIcons from 'react-icons/md'
 import { Action } from '../internal-services/db'
-import { Modal, ModalBody, ModalButton, ModalFooter, ModalHeader } from 'baseui-sd/modal'
+import { Modal, ModalBody, ModalButton, ModalFooter, ModalHeader } from 'baseui/modal'
 import { ActionForm } from './ActionForm'
 import { IconType } from 'react-icons'
 import { isDesktopApp } from '../utils'
 import { MdArrowDownward, MdArrowUpward } from 'react-icons/md'
 import { useSettings } from '../hooks/useSettings'
+import { getProviderLabel } from '../providers'
 import { emit } from '@tauri-apps/api/event'
 
 const useStyles = createUseStyles({
@@ -254,7 +255,7 @@ export function ActionManager({ draggable = true }: IActionManagerProps) {
                                     <div>{action.rolePrompt}</div>
                                     <div>{action.commandPrompt}</div>
                                 </div>
-                                {action.provider && (
+                                {action.providerId && (
                                     <div
                                         style={{
                                             display: 'inline-flex',
@@ -268,7 +269,9 @@ export function ActionManager({ draggable = true }: IActionManagerProps) {
                                             color: theme.colors.contentSecondary,
                                         }}
                                     >
-                                        {action.provider}
+                                        {settings
+                                            ? (getProviderLabel(settings, action.providerId) ?? t('Deleted provider'))
+                                            : action.providerId}
                                         {action.apiModel && ` / ${action.apiModel}`}
                                     </div>
                                 )}

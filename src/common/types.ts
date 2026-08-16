@@ -1,7 +1,7 @@
-import { Theme } from 'baseui-sd/theme'
+import { Theme } from 'baseui/theme'
 import { TranslateMode } from './translate'
 import { TTSProvider } from './tts/types'
-import { Provider } from './engines'
+import { ProviderConfig } from './providers/types'
 import { LangCode } from './lang'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -51,33 +51,22 @@ export type ProxyProtocol = 'HTTP' | 'HTTPS'
 
 export interface ISettings {
     automaticCheckForUpdates: boolean
-    apiKeys: string
-    apiURL: string
-    apiURLPath: string
-    apiModel: string
-    provider: Provider
-    chatgptModel: string
-    azureAPIKeys: string
-    azureAPIURL: string
-    azureAPIURLPath: string
-    azureAPIModel: string
-    azMaxWords: number
-    enableBackgroundBlur: boolean
-    enableMica: boolean // deprecated, please use enableBackgroundBlur
-    miniMaxGroupID: string
-    miniMaxAPIKey: string
-    miniMaxAPIModel: string
-    geminiAPIURL: string
-    geminiAPIKey: string
-    geminiAPIModel: string
-    moonshotAPIKey: string
-    moonshotAPIModel: string
-    deepSeekAPIKey: string
-    deepSeekAPIModel: string
+    /**
+     * Every configured endpoint, in display order.
+     *
+     * Replaces the old fixed `Provider` enum and its ~40 flat settings keys:
+     * a provider is now data, so reaching a new vendor is a row in this list
+     * rather than a new engine class and a new set of keys.
+     */
+    providers: ProviderConfig[]
+    /** `id` of the provider used when an action specifies none. */
+    defaultProviderId?: string
     autoTranslate: boolean
     defaultTranslateMode: Exclude<TranslateMode, 'big-bang'> | 'nop'
     defaultTargetLanguage: string
     alwaysShowIcons: boolean
+    enableBackgroundBlur: boolean
+    enableMica: boolean // deprecated, please use enableBackgroundBlur
     hotkey?: string
     displayWindowHotkey?: string
     ocrHotkey?: string
@@ -117,39 +106,8 @@ export interface ISettings {
         }
         noProxy?: string
     }
-    customModelName?: string
-    ollamaAPIURL: string
-    ollamaAPIModel: string
-    ollamaCustomModelName: string
-    ollamaModelLifetimeInMemory: string
-    thinkingEnabled: boolean
-    groqAPIURL: string
-    groqAPIURLPath: string
-    groqAPIModel: string
-    groqAPIKey: string
-    groqCustomModelName: string
-    claudeAPIURL: string
-    claudeAPIURLPath: string
-    claudeAPIModel: string
-    claudeAPIKey: string
-    claudeCustomModelName: string
-    kimiAccessToken: string
-    kimiRefreshToken: string
-    chatglmAccessToken: string
-    chatglmRefreshToken: string
-    cohereAPIKey: string
-    cohereAPIModel: string
-    cerebrasAPIKey: string
-    cerebrasAPIModel: string
-    teamoRouterAPIKey: string
-    teamoRouterAPIModel: string
-    openRouterAPIKey: string
-    openRouterAPIModel: string
     fontSize: number
     uiFontSize: number
     iconSize: number
-    noModelsAPISupport: boolean
-    claudeThinking: boolean
-    claudeThinkingLevel: 'low' | 'medium' | 'high'
     useCompactLookup?: boolean
 }

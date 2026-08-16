@@ -1,7 +1,6 @@
 import Dexie, { Table } from 'dexie'
 import { TranslateMode } from '../translate'
 import { LangCode } from '../lang'
-import { Provider } from '../engines'
 
 export interface VocabularyItem {
     word: string
@@ -23,10 +22,13 @@ export interface Action {
     rolePrompt?: string
     commandPrompt?: string
     outputRenderingFormat?: ActionOutputRenderingFormat
-    provider?: Provider
+    /**
+     * `ProviderConfig.id` this action pins, if any. An id rather than a vendor
+     * name, so an action can target one of several instances of the same
+     * vendor (different key, endpoint or reasoning setting).
+     */
+    providerId?: string
     apiModel?: string
-    thinking?: boolean
-    thinkingLevel?: 'low' | 'medium' | 'high'
     updatedAt: string
     createdAt: string
 }
@@ -49,10 +51,23 @@ export interface HistoryItem {
     updatedAt: number
 }
 
+/**
+ * A cached upstream snapshot, keyed by a well-known name. Lives in IndexedDB
+ * rather than `storage.sync` because the model capability catalog is ~250KB and
+ * `storage.sync` caps out at 100KB total / 8KB per item.
+ */
+export interface CachedSnapshot {
+    key: string
+    /** Serialized payload. Kept as a string so Dexie stores one opaque blob. */
+    payload: string
+    updatedAt: number
+}
+
 export class LocalDB extends Dexie {
     vocabulary!: Table<VocabularyItem>
     action!: Table<Action>
     history!: Table<HistoryItem>
+    snapshot!: Table<CachedSnapshot>
 
     constructor() {
         super('openai-translator')
@@ -65,6 +80,13 @@ export class LocalDB extends Dexie {
             action: '++id, idx, mode, name, icon, rolePrompt, commandPrompt, outputRenderingFormat, updatedAt, createdAt',
             history:
                 '++id, createdAt, updatedAt, text, translatedText, sourceLang, targetLang, actionId, actionMode, favorite',
+        })
+        this.version(6).stores({
+            vocabulary: 'word, reviewCount, description, updatedAt, createdAt',
+            action: '++id, idx, mode, name, icon, rolePrompt, commandPrompt, outputRenderingFormat, updatedAt, createdAt',
+            history:
+                '++id, createdAt, updatedAt, text, translatedText, sourceLang, targetLang, actionId, actionMode, favorite',
+            snapshot: 'key, updatedAt',
         })
     }
 }
