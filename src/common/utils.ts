@@ -254,7 +254,6 @@ export async function exportToCsv<T extends Record<string, string | number>>(fil
 
 interface FetchSSEOptions extends RequestInit {
     onMessage(data: string): Promise<void>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError(error: any): void
     onStatusCode?: (statusCode: number) => void
     fetcher?: (input: string, options: RequestInit) => Promise<Response>
@@ -414,10 +413,8 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
         onError(await resp.json())
         return
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const reader = resp.body!.getReader()
     try {
-        // eslint-disable-next-line no-constant-condition
         while (true) {
             const { done, value } = await reader.read()
             if (done) {
@@ -447,4 +444,3 @@ export function getAssetUrl(asset: string) {
 }
 export const isMacOS = navigator.userAgent.includes('Mac OS X')
 export const isWindows = navigator.userAgent.includes('Windows')
-

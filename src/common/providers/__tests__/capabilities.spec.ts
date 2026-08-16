@@ -140,7 +140,7 @@ describe('toReasoningControl', () => {
         expect(control.canDisable).toBe(false)
     })
 
-    it('falls back to the full ladder for an uncatalogued model', () => {
+    it('falls back to the full ladder for an uncataloged model', () => {
         const control = toReasoningControl(undefined)
         expect(control.kind).toBe('unknown')
         expect(control.options).toContain('none')
