@@ -39,11 +39,11 @@ Vitest config lives in `vite.config.ts` (`root: 'src'`, jsdom). Tests sit next t
 
 ### Environment notes
 
--   This checkout has `core.autocrlf=true`, so every file in the working tree has CRLF while
-    Prettier expects LF. `pnpm lint` therefore reports tens of thousands of `Delete ␍` errors on
-    files nobody touched. Filter them out to see real issues; do **not** rewrite line endings.
-    (`prettier --write` on an individual file is fine — it writes LF, and autocrlf normalizes it
-    back out, so `git diff` shows only the real formatting change.)
+-   `.gitattributes` pins every text file to LF in the working tree (`* text=auto eol=lf`),
+    which overrides `core.autocrlf` — this checkout has it set to `true`, and without the
+    override Prettier reported a `Delete ␍` error on every line of every file. If you ever see
+    that noise return, the working tree predates the attributes file: `git add --renormalize .`
+    then `git checkout-index -a -f` rewrites it.
 -   ESLint runs on flat config (`eslint.config.mjs`); there is no `.eslintrc.js` or `.eslintignore`.
     Three rules are off with the reason inline: `baseui/deprecated-theme-api` and
     `baseui/deprecated-component-api` (the plugin's latest release calls `context.getAncestors()`,

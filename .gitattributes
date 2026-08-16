@@ -1,0 +1,8 @@
+# Git decides text vs binary by content, and every text file is checked out with LF
+# no matter what `core.autocrlf` says. Prettier's `endOfLine` defaults to "lf", so
+# without this a Windows checkout reports a `Delete ␍` error on every line of every
+# file and buries the real lint output.
+* text=auto eol=lf
+
+# Windows-only helper, and the one place CRLF is the safer default.
+*.ps1 text eol=crlf

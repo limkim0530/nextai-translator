@@ -54,7 +54,6 @@ async function main() {
  * Snapshot: ${snapshot}
  * Providers: ${Object.keys(byProvider).length} · Reasoning models: ${modelCount}
  */
-/* eslint-disable */
 
 export const MODELS_DEV_SNAPSHOT = '${snapshot}'
 

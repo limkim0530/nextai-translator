@@ -7,7 +7,6 @@
  * Snapshot: 2026-08-15
  * Providers: 180 · Reasoning models: 4489
  */
-/* eslint-disable */
 
 export const MODELS_DEV_SNAPSHOT = '2026-08-15'
 
