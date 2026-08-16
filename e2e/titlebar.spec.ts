@@ -1,11 +1,10 @@
-import path from 'node:path'
 import { expect, test } from './fixtures'
-import { selectExampleText } from './common'
+import { selectExampleText, testPageUrl } from './common'
 import { containerID, popupCardInnerContainerId, popupThumbID } from '../src/browser-extension/content_script/consts'
 
 test.describe('titlebar', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto(`file:${path.join(__dirname, 'test.html')}`)
+        await page.goto(testPageUrl)
         await selectExampleText(page)
         const thumb = page.locator(`#${containerID} #${popupThumbID}`)
         await thumb.click()

@@ -1,6 +1,5 @@
-import path from 'node:path'
 import { expect, test } from './fixtures'
-import { getOptionsPageUrl, getPopupPageUrl, selectExampleText } from './common'
+import { getOptionsPageUrl, getPopupPageUrl, selectExampleText, testPageUrl } from './common'
 import {
     containerID,
     popupThumbID,
@@ -9,7 +8,7 @@ import {
 } from '../src/browser-extension/content_script/consts'
 
 test('popup card should be visible', async ({ page }) => {
-    await page.goto(`file:${path.join(__dirname, 'test.html')}`)
+    await page.goto(testPageUrl)
     await selectExampleText(page)
 
     const container = page.locator(`#${containerID}`)

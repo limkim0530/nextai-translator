@@ -1,7 +1,8 @@
 import path from 'node:path'
 import { type BrowserContext, test as base, chromium } from '@playwright/test'
+import { e2eDir } from './common'
 
-export const extensionPath = path.join(__dirname, '../dist/browser-extension/chromium')
+export const extensionPath = path.join(e2eDir, '../dist/browser-extension/chromium')
 
 export const test = base.extend<{
     context: BrowserContext
@@ -9,12 +10,11 @@ export const test = base.extend<{
 }>({
     context: async ({ headless }, use) => {
         const context = await chromium.launchPersistentContext('', {
+            // Playwright >= 1.49 serves headless runs from `chromium-headless-shell`, which cannot
+            // load extensions. The full `chromium` channel loads them in both headless and headed.
+            channel: 'chromium',
             headless,
-            args: [
-                ...(headless ? ['--headless=new'] : []),
-                `--disable-extensions-except=${extensionPath}`,
-                `--load-extension=${extensionPath}`,
-            ],
+            args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
         })
         await use(context)
         await context.close()

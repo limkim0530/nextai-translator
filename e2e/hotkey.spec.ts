@@ -1,13 +1,10 @@
-import path from 'node:path'
-import { getOptionsPageUrl, selectExampleText } from './common'
+import { getOptionsPageUrl, selectExampleText, testPageUrl } from './common'
 import { expect, test } from './fixtures'
 import { containerID, popupCardID, popupCardInnerContainerId } from '../src/browser-extension/content_script/consts'
 
 test('hotkey should work', async ({ page, extensionId }) => {
     await test.step('set hotkey', async () => {
         await page.goto(getOptionsPageUrl(extensionId))
-        const input = page.locator('input[name="apiKey"]')
-        await input.fill('fake-api-key')
         await page.getByTestId('shortcuts').click()
         await page.getByTestId('hotkey-recorder').click()
         await page.keyboard.down('Alt')
@@ -18,7 +15,7 @@ test('hotkey should work', async ({ page, extensionId }) => {
     })
 
     const popupCard = await test.step('show popup card using hotkey', async () => {
-        await page.goto(`file:${path.join(__dirname, 'test.html')}`)
+        await page.goto(testPageUrl)
         await selectExampleText(page)
 
         const container = page.locator(`#${containerID}`)
