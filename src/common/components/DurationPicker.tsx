@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import NumberInput from './NumberInput'
-import { Select, SelectProps } from 'baseui-sd/select'
+import { Select, SelectProps } from 'baseui/select'
 import { useTranslation } from 'react-i18next'
 
 type DurationUnit = 's' | 'm' | 'h'

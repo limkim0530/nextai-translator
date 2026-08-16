@@ -180,7 +180,7 @@ export async function speak({
                 if (audioBufferSource) {
                     try {
                         audioBufferSource.stop()
-                    } catch (e) {
+                    } catch {
                         // ignore
                     }
                 }

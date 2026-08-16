@@ -4,10 +4,10 @@ import { BackgroundEventNames } from './eventnames'
 
 export async function backgroundGetItem(key: string): Promise<string | null> {
     const browser = (await import('webextension-polyfill')).default
-    const resp = await browser.runtime.sendMessage({
+    const resp = (await browser.runtime.sendMessage({
         type: BackgroundEventNames.getItem,
         key,
-    })
+    })) as { value: string | null }
     return resp.value
 }
 

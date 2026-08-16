@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
-import webExtension from '@samrum/vite-plugin-web-extension'
+import { crx } from '@crxjs/vite-plugin'
 import react from '@vitejs/plugin-react'
-import tsconfigPaths from 'vite-tsconfig-paths'
 import svgr from 'vite-plugin-svgr'
 import { fileURLToPath, URL } from 'url'
 import { getManifest } from './src/browser-extension/manifest'
@@ -10,15 +9,18 @@ const isDev = process.env.NODE_ENV === 'development'
 
 export default defineConfig({
     plugins: [
-        tsconfigPaths(),
         react(),
         svgr(),
-        webExtension({
+        // `browser: 'firefox'` is what keeps `background.scripts` (which Gecko
+        // wants) from being rewritten into Chrome's `background.service_worker`.
+        crx({
             manifest: getManifest('firefox'),
-            useDynamicUrlWebAccessibleResources: false,
+            browser: 'firefox',
         }),
     ],
     resolve: {
+        // Vite 8 resolves tsconfig `paths` natively; vite-tsconfig-paths is gone.
+        tsconfigPaths: true,
         alias: [{ find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) }],
     },
     build: {
@@ -26,10 +28,7 @@ export default defineConfig({
         minify: !isDev,
         sourcemap: isDev,
         target: 'chrome105',
-        rollupOptions: {
-            output: {
-                dir: 'dist/browser-extension/firefox',
-            },
-        },
+        outDir: 'dist/browser-extension/firefox',
+        emptyOutDir: true,
     },
 })

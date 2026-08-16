@@ -7,8 +7,7 @@ import { SpeakerIcon } from './SpeakerIcon'
 import { segmentSpeechText } from '../tts/speech-segments'
 
 export type PhoneticSegment =
-    | { kind: 'text'; text: string }
-    | { kind: 'phonetic' | 'example'; text: string; speechText: string }
+    { kind: 'text'; text: string } | { kind: 'phonetic' | 'example'; text: string; speechText: string }
 
 const PHONETIC_PATTERN = /·\s*(\/\s*([^/\n]{1,120}?)\s*\/)/g
 const EXAMPLE_HEADER_PATTERN = /(?:例句|示例|examples?|example sentences?)\s*[：:]\s*/i
@@ -81,7 +80,7 @@ function parseExampleLine(line: string): PhoneticSegment[] | undefined {
         return undefined
     }
 
-    const exampleStart = header ? (header.index ?? 0) + header[0].length : number?.[0].length ?? 0
+    const exampleStart = header ? (header.index ?? 0) + header[0].length : (number?.[0].length ?? 0)
     const speechText = beforeTranslation.slice(exampleStart).trim()
     if (!speechText || speechText.length > 500) {
         return undefined
@@ -193,8 +192,8 @@ export function PhoneticText({
                             {highlightRange
                                 ? renderHighlightedRange(segment.text, currentOffset, themeType, highlightRange)
                                 : renderText
-                                ? renderText(segment.text)
-                                : segment.text}
+                                  ? renderText(segment.text)
+                                  : segment.text}
                         </Fragment>
                     )
                 }
@@ -219,20 +218,20 @@ export function PhoneticText({
                             {highlightRange
                                 ? renderHighlightedRange(segment.text, currentOffset, themeType, highlightRange)
                                 : segment.kind === 'example'
-                                ? segmentSpeechText(segment.text, lang).map((part, partIndex) => (
-                                      <span
-                                          key={partIndex}
-                                          style={
-                                              activeWord?.segmentIndex === index &&
-                                              activeWord.wordIndex === part.wordIndex
-                                                  ? readingWordStyle(themeType)
-                                                  : readingWordBaseStyle
-                                          }
-                                      >
-                                          {renderText ? renderText(part.text) : part.text}
-                                      </span>
-                                  ))
-                                : segment.text}
+                                  ? segmentSpeechText(segment.text, lang).map((part, partIndex) => (
+                                        <span
+                                            key={partIndex}
+                                            style={
+                                                activeWord?.segmentIndex === index &&
+                                                activeWord.wordIndex === part.wordIndex
+                                                    ? readingWordStyle(themeType)
+                                                    : readingWordBaseStyle
+                                            }
+                                        >
+                                            {renderText ? renderText(part.text) : part.text}
+                                        </span>
+                                    ))
+                                  : segment.text}
                         </span>
                         <span
                             title={`播放 ${segment.speechText}`}

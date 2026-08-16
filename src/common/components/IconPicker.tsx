@@ -1,10 +1,10 @@
 import { IconType } from 'react-icons'
 import * as mdIcons from 'react-icons/md'
 import { createUseStyles } from 'react-jss'
-import { Button } from 'baseui-sd/button'
+import { Button } from 'baseui/button'
 import { useEffect, useState, createElement, useMemo } from 'react'
 import { VariableSizeGrid as Grid } from 'react-window'
-import { Input } from 'baseui-sd/input'
+import { Input } from 'baseui/input'
 import { useTranslation } from 'react-i18next'
 
 const useStyles = createUseStyles({

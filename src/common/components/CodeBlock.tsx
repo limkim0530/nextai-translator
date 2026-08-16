@@ -1,5 +1,5 @@
 import { CodeBlock as BaseCodeBlock } from 'react-code-block'
-import { Button } from 'baseui-sd/button'
+import { Button } from 'baseui/button'
 import { themes } from 'prism-react-renderer'
 import { createUseStyles } from 'react-jss'
 import { useCopyToClipboard } from 'react-use'

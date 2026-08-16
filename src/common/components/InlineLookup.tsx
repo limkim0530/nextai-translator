@@ -176,14 +176,7 @@ export function InlineLookup({ translatedText = '', isLoading = false, onClose }
                 const appWindow = WebviewWindow.getCurrent()
                 await appWindow.startResizeDragging(
                     direction as
-                        | 'North'
-                        | 'South'
-                        | 'East'
-                        | 'West'
-                        | 'NorthEast'
-                        | 'NorthWest'
-                        | 'SouthEast'
-                        | 'SouthWest'
+                        'North' | 'South' | 'East' | 'West' | 'NorthEast' | 'NorthWest' | 'SouthEast' | 'SouthWest'
                 )
             } catch {
                 // ignore

@@ -1,5 +1,6 @@
 import { IconBaseProps } from 'react-icons'
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ISpinnerIconProps extends IconBaseProps {}
 
 // The arc is rotated with SMIL (animateTransform) around the explicit user-unit

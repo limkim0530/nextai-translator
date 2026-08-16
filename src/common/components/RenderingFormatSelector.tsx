@@ -1,4 +1,4 @@
-import { Select, SelectProps } from 'baseui-sd/select'
+import { Select, SelectProps } from 'baseui/select'
 import { ActionOutputRenderingFormat } from '../internal-services/db'
 
 export interface IRenderingFormatSelector extends Omit<SelectProps, 'value' | 'onChange'> {

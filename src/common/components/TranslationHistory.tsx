@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Modal, ModalBody, ModalHeader } from 'baseui-sd/modal'
-import { Input } from 'baseui-sd/input'
-import { Select, Value, Option } from 'baseui-sd/select'
-import { Button } from 'baseui-sd/button'
-import { Checkbox } from 'baseui-sd/checkbox'
+import { Modal, ModalBody, ModalHeader } from 'baseui/modal'
+import { Input } from 'baseui/input'
+import { Select, Value, Option } from 'baseui/select'
+import { Button } from 'baseui/button'
+import { Checkbox } from 'baseui/checkbox'
 import { createUseStyles } from 'react-jss'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../hooks/useTheme'
@@ -241,8 +241,8 @@ export function TranslationHistory(props: TranslationHistoryProps) {
                     selectedActionId === ALL_ACTIONS_OPTION_ID
                         ? undefined
                         : typeof selectedActionData?.id === 'number'
-                        ? selectedActionData.id
-                        : undefined,
+                          ? selectedActionData.id
+                          : undefined,
                 actionMode: selectedActionId === ALL_ACTIONS_OPTION_ID ? undefined : selectedActionData?.mode,
             })
         },

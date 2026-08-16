@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "strict": true,
-        "lib": ["DOM", "DOM.Iterable", "es2015"],
+        "lib": ["DOM", "DOM.Iterable", "ES2022"],
         "allowJs": false,
         "useDefineForClassFields": true,
         "module": "ESNext",
@@ -12,7 +12,7 @@
         "sourceMap": false,
         "rootDir": ".",
         "outDir": "dist/js",
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "noEmit": true,
         "noEmitOnError": true,
         "jsx": "react-jsx",
@@ -23,5 +23,5 @@
             "@/*": ["./src/*"]
         }
     },
-    "include": ["src", "src-tauri", "vite.config*.ts", ".eslintrc.js", "playwright.config.ts", "e2e"]
+    "include": ["src", "src-tauri", "vite.config*.ts", "playwright.config.ts", "e2e"]
 }

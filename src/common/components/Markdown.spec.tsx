@@ -6,7 +6,7 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }))
 vi.mock('../hooks/useTheme', async () => {
-    const { LightTheme } = await import('baseui-sd/themes')
+    const { LightTheme } = await import('baseui/themes')
     return { useTheme: () => ({ theme: LightTheme, themeType: 'light' }) }
 })
 vi.mock('../hooks/useSettings', () => ({

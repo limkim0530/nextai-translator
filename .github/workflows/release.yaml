@@ -51,14 +51,12 @@ jobs:
         id: get_version
         uses: battila7/get-version-action@v2
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8.6.0
+      - uses: pnpm/action-setup@v4
 
       - name: setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 24
           cache: 'pnpm'
 
       - name: Install Rust nightly
@@ -117,14 +115,12 @@ jobs:
         id: get_version
         uses: battila7/get-version-action@v2
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8.6.0
+      - uses: pnpm/action-setup@v4
 
       - name: Setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 24
           cache: 'pnpm'
 
       - name: Install Rust nightly
@@ -246,14 +242,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8.6.0
+      - uses: pnpm/action-setup@v4
 
       - name: setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 24
           cache: 'pnpm'
 
       - name: Install Rust nightly

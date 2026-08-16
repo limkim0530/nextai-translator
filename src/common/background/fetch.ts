@@ -1,14 +1,16 @@
 import { isFirefox } from '../utils'
 import { BackgroundEventNames } from './eventnames'
-import { ReadableStream as ReadableStreamPolyfill } from 'web-streams-polyfill/ponyfill'
+import { ReadableStream as ReadableStreamPolyfill } from 'web-streams-polyfill'
 
 export interface BackgroundFetchRequestMessage {
     type: 'open' | 'abort'
     details?: { url: string; options: RequestInit }
 }
 
-export interface BackgroundFetchResponseMessage
-    extends Pick<Response, 'ok' | 'status' | 'statusText' | 'redirected' | 'type' | 'url'> {
+export interface BackgroundFetchResponseMessage extends Pick<
+    Response,
+    'ok' | 'status' | 'statusText' | 'redirected' | 'type' | 'url'
+> {
     error?: { message: string; name: string }
     status: number
     data?: string
@@ -52,7 +54,10 @@ export async function backgroundFetch(input: string, options: RequestInit) {
 
             const readableStream = new ReadableStream({
                 start(controller) {
-                    port.onMessage.addListener((msg: BackgroundFetchResponseMessage) => {
+                    port.onMessage.addListener((rawMsg) => {
+                        // webextension-polyfill types port messages as `unknown`;
+                        // this port only ever carries the fetch protocol.
+                        const msg = rawMsg as BackgroundFetchResponseMessage
                         const { data, error, ...restResp } = msg
                         if (error) {
                             const e = new Error()
@@ -80,7 +85,7 @@ export async function backgroundFetch(input: string, options: RequestInit) {
                         signal?.removeEventListener('abort', handleAbort)
                         try {
                             controller.close()
-                        } catch (e) {
+                        } catch {
                             // may throw if controller is errored
                         }
                     })

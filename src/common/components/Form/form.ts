@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/ban-types */
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { ReactElement, ReactNode } from 'react'
@@ -7,7 +7,7 @@ import RcForm, { useForm as RcUseForm } from 'rc-field-form'
 import { FormProps as RcFormProps } from 'rc-field-form/es/Form'
 import { FieldProps as RcFieldProps } from 'rc-field-form/es/Field'
 import { FieldData, FieldError, Store } from 'rc-field-form/lib/interface'
-import { FormControl } from 'baseui-sd/form-control'
+import { FormControl } from 'baseui/form-control'
 import { Validator, compose as composeValidator } from './validators'
 import { FormItem as RcField } from './item'
 import { NamePath, Paths, PathType } from './typings'
@@ -31,8 +31,10 @@ export type FormInstance<S extends {} = Store, K extends keyof S = keyof S> = {
     submit: () => void
 }
 
-export interface FormProps<S extends {} = Store, V = S>
-    extends Omit<RcFormProps, 'form' | 'onFinish' | 'onValuesChange'> {
+export interface FormProps<S extends {} = Store, V = S> extends Omit<
+    RcFormProps,
+    'form' | 'onFinish' | 'onValuesChange'
+> {
     form?: FormInstance<S>
     initialValues?: Partial<V>
     onFinish?: (values: V) => void

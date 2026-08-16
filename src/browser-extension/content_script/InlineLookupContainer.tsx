@@ -31,7 +31,7 @@ export function InlineLookupContainer({ text, onClose }: InlineLookupContainerPr
                 const targetLang: LangCode =
                     sourceLang === 'zh-Hans' || sourceLang === 'zh-Hant'
                         ? 'en'
-                        : (settings.defaultTargetLanguage as LangCode | undefined) ?? 'en'
+                        : ((settings.defaultTargetLanguage as LangCode | undefined) ?? 'en')
 
                 let action: Action | undefined
                 try {

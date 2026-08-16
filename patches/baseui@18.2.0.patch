@@ -1,0 +1,63 @@
+diff --git a/select/select-component.js b/select/select-component.js
+index f01fb57adacde3fd55f323bc9854fecad2d0fe62..2f6e0ff97df2f422e5bdf13ba6cefc3ca4193e3d 100644
+--- a/select/select-component.js
++++ b/select/select-component.js
+@@ -47,6 +47,19 @@ const containsNode = (parent, child) => {
+     return child && parent && parent.contains(child);
+   }
+ };
++// PATCH (nextai-translator): the handlers below run off `document`-level
++// listeners, so for a Select rendered inside a shadow root `event.target` has
++// already been retargeted to the shadow host and every containsNode() check
++// below reports false — the menu closes on the first interaction. composedPath()
++// still carries the real inner target. Upstream fixed popover this way
++// (popover/popover.js) but not select; drop this patch once it lands there.
++// @ts-ignore
++const getEventTarget = event => {
++  if (event.composedPath) {
++    return event.composedPath()[0];
++  }
++  return event.target;
++};
+ function isInteractive(rootTarget, rootElement) {
+   if (rootTarget instanceof Element) {
+     let target = rootTarget;
+@@ -106,8 +119,9 @@ class Select extends React.Component {
+     // Handle touch outside on mobile to dismiss menu, ensures that the
+     // touch target is not within the anchor DOM node.
+     _defineProperty(this, "handleTouchOutside", event => {
+-      if (containsNode(this.dropdown.current, event.target)) return;
+-      if (!containsNode(this.anchor.current, event.target)) {
++      const eventTarget = getEventTarget(event);
++      if (containsNode(this.dropdown.current, eventTarget)) return;
++      if (!containsNode(this.anchor.current, eventTarget)) {
+         this.closeMenu();
+       }
+     });
+@@ -214,11 +228,12 @@ class Select extends React.Component {
+       this.openAfterFocus = false;
+     });
+     _defineProperty(this, "handleBlur", event => {
++      const eventTarget = getEventTarget(event);
+       if (event.relatedTarget) {
+         if (containsNode(this.anchor.current, event.relatedTarget) || containsNode(this.dropdown.current, event.relatedTarget)) {
+           return;
+         }
+-      } else if (containsNode(this.anchor.current, event.target)) {
++      } else if (containsNode(this.anchor.current, eventTarget)) {
+         return;
+       }
+       if (this.props.onBlur) {
+@@ -238,9 +253,10 @@ class Select extends React.Component {
+         this.justSelected = false;
+         return;
+       }
+-      if (containsNode(this.dropdown.current, event.target)) return;
++      const eventTarget = getEventTarget(event);
++      if (containsNode(this.dropdown.current, eventTarget)) return;
+       const isFocused = this.state.isFocused || this.state.isPseudoFocused;
+-      if (isFocused && !containsNode(this.anchor.current, event.target)) {
++      if (isFocused && !containsNode(this.anchor.current, eventTarget)) {
+         this.handleBlur(event);
+       }
+     });
