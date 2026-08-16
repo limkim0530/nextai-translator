@@ -9,6 +9,8 @@ npm-error.log
 *.json-e
 *.js-e
 
+.claude
+
 .vscode
 .idea
 .eslintcache
