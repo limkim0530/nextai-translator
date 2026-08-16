@@ -76,7 +76,6 @@ describe('buildCapabilityTables', () => {
         // A reseller advertising the gateway's superset for the same model.
         somegateway: {
             models: {
-                // eslint-disable-next-line camelcase
                 'gpt-5.1': {
                     reasoning: true,
                     // eslint-disable-next-line camelcase

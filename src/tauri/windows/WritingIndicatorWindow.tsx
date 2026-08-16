@@ -195,12 +195,10 @@ export function WritingIndicatorWindow() {
 
         ;(async () => {
             off1 = await listen('writing-indicator-start', (e: Event<StartPayload>) => {
-                // eslint-disable-next-line no-console
                 console.log('[indicator] received writing-indicator-start', e.payload)
                 startWith(e.payload?.targetLanguage ?? '')
             })
             off2 = await listen('writing-indicator-finish', () => {
-                // eslint-disable-next-line no-console
                 console.log('[indicator] received writing-indicator-finish')
                 // Flash the check, then fade. Rust hides the OS window ~700ms
                 // from emit, so we start the fade at 350ms — it completes
@@ -218,12 +216,10 @@ export function WritingIndicatorWindow() {
             try {
                 const pending = await commands.getWritingIndicatorPendingLang()
                 if (pending) {
-                    // eslint-disable-next-line no-console
                     console.log('[indicator] recovered pending start from backend:', pending)
                     startWith(pending)
                 }
             } catch (err) {
-                // eslint-disable-next-line no-console
                 console.warn('[indicator] getWritingIndicatorPendingLang failed', err)
             }
         })()

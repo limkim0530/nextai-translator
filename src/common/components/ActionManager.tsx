@@ -217,10 +217,8 @@ export function ActionManager({ draggable = true }: IActionManagerProps) {
                         },
                     }}
                     onChange={async ({ oldIndex, newIndex }) => {
-                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                         const newActions = arrayMove(actions!, oldIndex, newIndex)
                         await actionService.bulkPut(
-                            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                             newActions.map((a, idx) => {
                                 return {
                                     ...a,

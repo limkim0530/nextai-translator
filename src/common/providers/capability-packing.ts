@@ -51,7 +51,6 @@ export interface RawReasoningOption {
 
 export interface RawModel {
     reasoning?: boolean
-    // eslint-disable-next-line camelcase
     reasoning_options?: RawReasoningOption[]
 }
 
@@ -85,7 +84,6 @@ export function packCaps(model: RawModel): PackedCaps {
         if (option.type === 'effort' && option.values?.length) {
             const values = option.values
                 .filter((v): v is Effort => EFFORT_RANK.has(v))
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 .sort((a, b) => EFFORT_RANK.get(a)! - EFFORT_RANK.get(b)!)
             if (values.length) {
                 packed.e = values

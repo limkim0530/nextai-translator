@@ -1,4 +1,3 @@
-/* eslint-disable camelcase */
 import { v4 as uuidv4 } from 'uuid'
 import { getLangConfig, getLangName, LangCode } from '../common/lang'
 import { Action } from './internal-services/db'

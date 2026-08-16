@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import { BackgroundEventNames } from './eventnames'
 
 export async function backgroundGetItem(key: string): Promise<string | null> {

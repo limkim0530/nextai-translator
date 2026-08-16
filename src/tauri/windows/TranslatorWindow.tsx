@@ -112,7 +112,6 @@ export function TranslatorWindow() {
         let unlisten: UnlistenFn | undefined
         ;(async () => {
             unlisten = await listen('writing-text', async (event: Event<string>) => {
-                // eslint-disable-next-line no-console
                 console.log('[writing] received writing-text event', {
                     payloadLen: event.payload?.length ?? 0,
                     writingTargetLanguage: settings?.writingTargetLanguage,
@@ -122,7 +121,6 @@ export function TranslatorWindow() {
                     writing()
                 }
                 if (!settings?.writingTargetLanguage) {
-                    // eslint-disable-next-line no-console
                     console.warn(
                         '[writing] bailing: settings.writingTargetLanguage is not set — ' +
                             'open Settings → Writing → Target language and pick one'
@@ -132,7 +130,6 @@ export function TranslatorWindow() {
                 }
                 const inputText = event.payload
                 if (!inputText) {
-                    // eslint-disable-next-line no-console
                     console.warn('[writing] bailing: empty input text')
                     commands.finishWriting().catch(console.error)
                     return
@@ -142,10 +139,8 @@ export function TranslatorWindow() {
                 // user's input. Rust's `finish_writing` will emit the matching
                 // "writing-indicator-finish" event to tear it down — so error
                 // and success paths both go through `enqueueFinish`.
-                // eslint-disable-next-line no-console
                 console.log('[writing] calling showWritingIndicator(', settings.writingTargetLanguage, ')')
                 commands.showWritingIndicator(settings.writingTargetLanguage).catch((err) => {
-                    // eslint-disable-next-line no-console
                     console.error('[writing] showWritingIndicator failed', err)
                 })
 

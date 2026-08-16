@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -93,7 +92,6 @@ export function createShouldUpdate(
     names: Array<string | number | (string | number)[]> = []
 ): RcFieldProps['shouldUpdate'] {
     return (prev, curr) => {
-        // eslint-disable-next-line no-restricted-syntax
         for (const name of names) {
             const paths = Array.isArray(name) ? name : [name]
             if (getValues(prev, paths) !== getValues(curr, paths)) {
@@ -155,7 +153,6 @@ export function createForm<S extends {} = Store>({
                   ]
                 : [{ validator: composeValidator(validators) }]
 
-        // eslint-disable-next-line react/destructuring-assignment
         // eslint-disable-next-line react/prop-types
         if (props.required) {
             rules.push({ required: true, message: `${label} is required` })

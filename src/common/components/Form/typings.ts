@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-empty-object-type */
 
 type Cons<H, T> = T extends readonly any[]
     ? ((h: H, ...t: T) => void) extends (...r: infer R) => void

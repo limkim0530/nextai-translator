@@ -54,9 +54,7 @@ class BrowserStorage {
 }
 
 class BrowserRuntimeOnMessage {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     addListener(_callback: (message: any, sender: any, sendResponse: any) => void): void {}
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     removeListener(_callback: (message: any, sender: any, sendResponse: any) => void): void {}
 }
 
@@ -67,7 +65,6 @@ class BrowserRuntime {
         this.onMessage = new BrowserRuntimeOnMessage()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     sendMessage(_message: any): void {}
 
     getURL(path: string): string {

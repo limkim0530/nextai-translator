@@ -169,7 +169,6 @@ export class HighlightInTextarea {
         this.renderMarks(boundaries)
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getType(instance: any) {
         const type = typeof instance
         if (!instance) {
@@ -194,7 +193,6 @@ export class HighlightInTextarea {
         return 'other'
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getRanges(input: string | undefined, highlight: IConfig['highlight'] | null): any {
         const type = this.getType(highlight)
         switch (type) {

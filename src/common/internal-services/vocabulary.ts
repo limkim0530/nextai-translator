@@ -54,7 +54,6 @@ class VocabularyInternalService implements IVocabularyInternalService {
         const randomVocabularyItems: VocabularyItem[] = []
         const idxSeen: Set<number> = new Set([])
         while (idxSeen.size < limit) {
-            // eslint-disable-next-line no-constant-condition
             while (true) {
                 const idx = Math.floor(collectedWordTotal * Math.random())
                 if (idxSeen.has(idx)) {

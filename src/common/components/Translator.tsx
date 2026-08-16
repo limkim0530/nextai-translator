@@ -1005,7 +1005,6 @@ function InnerTranslator(props: IInnerTranslatorProps) {
     const [isWordMode, setIsWordMode] = useState(false)
     const isWordModeRef = useRef(false)
     const [isCollectedWord, setIsCollectedWord] = useState(false)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isAutoCollectOn, setIsAutoCollectOn] = useState(
         settings.autoCollect === undefined ? false : settings.autoCollect
     )

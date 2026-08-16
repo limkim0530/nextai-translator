@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable prefer-promise-reject-errors */
-/* eslint-disable no-restricted-syntax */
 export type Validator = (rule: any, value: any) => Promise<void>
 
 export const compose = (validators: Array<Validator | null>): Validator => {
@@ -8,7 +6,6 @@ export const compose = (validators: Array<Validator | null>): Validator => {
         for (const validator of validators) {
             if (validator) {
                 try {
-                    // eslint-disable-next-line no-await-in-loop
                     await validator(rule, value)
                 } catch (err) {
                     return Promise.reject(err)
@@ -23,7 +20,6 @@ export const required =
     (msg: string): Validator =>
     (_, value) => {
         const val = typeof value === 'string' ? value.trim() : value
-        // eslint-disable-next-line no-nested-ternary
         const valid = !!(Array.isArray(val)
             ? val.length
             : typeof value === 'boolean' // for checkbox
@@ -54,7 +50,6 @@ const numberComparison =
     (flag: number, msg: string, inclusive = false) => {
         const validator: Validator = (_, value) => {
             const num = Number(value)
-            // eslint-disable-next-line no-restricted-globals
             return value === '' || isNaN(num) || callback(num, flag) || (inclusive && num === flag)
                 ? Promise.resolve()
                 : Promise.reject(msg)
