@@ -3,7 +3,7 @@ import { crx } from '@crxjs/vite-plugin'
 import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
 import { fileURLToPath, URL } from 'url'
-import { getManifest } from './src/browser-extension/manifest'
+import { getManifest } from './src/browser-extension/manifest.ts'
 
 const isDev = process.env.NODE_ENV === 'development'
 

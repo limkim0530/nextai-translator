@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-import { version } from '../../package.json'
+import { version } from '../../package.json' with { type: 'json' }
 
 export function getManifest(browser: 'firefox' | 'chromium') {
     const manifest = {
