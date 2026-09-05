@@ -173,6 +173,13 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         keyless: true,
     },
     {
+        id: 'litellm',
+        name: 'LiteLLM',
+        protocol: 'openai-compatible',
+        baseURL: 'http://localhost:4000/v1',
+        docsURL: 'https://docs.litellm.ai',
+    },
+    {
         id: 'openrouter',
         name: 'OpenRouter',
         protocol: 'openai-compatible',
@@ -206,13 +213,6 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'openai-compatible',
         baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
         catalogKey: 'volcengine',
-    },
-    {
-        id: 'litellm',
-        name: 'LiteLLM',
-        protocol: 'openai-compatible',
-        baseURL: 'http://localhost:4000/v1',
-        docsURL: 'https://docs.litellm.ai',
     },
     {
         id: 'lmstudio',

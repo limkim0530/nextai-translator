@@ -506,10 +506,16 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                                 addProvider(String(id))
                             }
                         }}
-                        mapOptionToNode={({ option }) => (
+                        getOptionLabel={({ option }) => (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <ProviderIcon presetId={String(option.id)} size={14} style={{ flexShrink: 0 }} />
-                                <span>{option.label}</span>
+                                <span>{String(option.label)}</span>
+                            </div>
+                        )}
+                        getValueLabel={({ option }) => (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <ProviderIcon presetId={String(option.id)} size={14} style={{ flexShrink: 0 }} />
+                                <span>{String(option.label)}</span>
                             </div>
                         )}
                     />
