@@ -61,6 +61,7 @@ import Latex from 'react-latex-next'
 import { Markdown } from './Markdown'
 import { useResizeObserver } from 'use-resize-observer'
 import _ from 'underscore'
+import { ProviderIcon } from './ProviderIcon'
 import { GlobalSuspense } from './GlobalSuspense'
 import { useLazyEffect } from '../usehooks'
 import LogoWithText, { type LogoWithTextRef } from './LogoWithText'
@@ -3106,7 +3107,11 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                     )}
                     {!showSettings && (
                         <div className={styles.poweredBy}>
-                            Powered by <div className={styles.brand}>{effectiveProvider?.name ?? t('No provider')}</div>
+                            Powered by{' '}
+                            <div className={styles.brand}>
+                                {effectiveProvider && <ProviderIcon provider={effectiveProvider} size={11} />}
+                                {effectiveProvider?.name ?? t('No provider')}
+                            </div>
                             {effectiveProvider?.model && ` ${effectiveProvider.model}`}
                             {effectiveProvider?.reasoning &&
                                 effectiveProvider.reasoning !== 'provider-default' &&

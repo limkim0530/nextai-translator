@@ -11,6 +11,7 @@ import { RiDeleteBin5Line } from 'react-icons/ri'
 import { IoRefreshSharp } from 'react-icons/io5'
 import toast from 'react-hot-toast'
 import { useTheme } from '../hooks/useTheme'
+import { ProviderIcon } from './ProviderIcon'
 import type { IThemedStyleProps } from '../types'
 import {
     createProviderFromPreset,
@@ -107,6 +108,9 @@ const useStyles = createUseStyles({
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
     },
     rowMeta: (props: IThemedStyleProps) => ({
         fontSize: '11px',
@@ -445,7 +449,10 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                         }}
                     >
                         <div className={styles.rowMain}>
-                            <div className={styles.rowName}>{provider.name || t('Unnamed provider')}</div>
+                            <div className={styles.rowName}>
+                                <ProviderIcon provider={provider} size={14} style={{ flexShrink: 0 }} />
+                                {provider.name || t('Unnamed provider')}
+                            </div>
                             <div className={styles.rowMeta}>
                                 {provider.protocol}
                                 {provider.model ? ` · ${provider.model}` : ` · ${t('no model')}`}
@@ -499,6 +506,12 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                                 addProvider(String(id))
                             }
                         }}
+                        mapOptionToNode={({ option }) => (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <ProviderIcon presetId={String(option.id)} size={14} style={{ flexShrink: 0 }} />
+                                <span>{option.label}</span>
+                            </div>
+                        )}
                     />
                 </div>
                 <Button size='compact' kind='secondary' onClick={() => addProvider('custom-openai')}>
