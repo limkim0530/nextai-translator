@@ -103,6 +103,7 @@
     "Update": "Update",
     "Action": "Action",
     "All Actions": "All actions",
+    "No available action": "No available action",
     "Action Manager": "Action Manager",
     "Clear All History?": "Clear all history?",
     "Clear History": "Clear history",
@@ -294,5 +295,7 @@
     "context truncated": "context truncated",
     "use wider context": "use wider context",
     "wider context": "wider context",
-    "re-detect": "re-detect"
+    "re-detect": "re-detect",
+    "Back": "Back",
+    "Forward": "Forward"
 }

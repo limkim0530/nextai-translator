@@ -135,6 +135,7 @@
     "react-syntax-highlighter": "npm:@fengkx/react-syntax-highlighter@15.6.1",
     "react-use": "^17.6.1",
     "react-window": "^1.8.11",
+    "remark-gfm": "^3.0.1",
     "styletron-engine-atomic": "^1.6.2",
     "styletron-react": "^6.1.1",
     "swr": "^2.5.1",

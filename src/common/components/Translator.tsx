@@ -7,7 +7,7 @@ import { BaseProvider } from 'baseui'
 import { Textarea } from 'baseui/textarea'
 import { createUseStyles } from 'react-jss'
 import { AiOutlineFileSync } from 'react-icons/ai'
-import { IoSettingsOutline } from 'react-icons/io5'
+import { IoSettingsOutline, IoChevronBackOutline, IoChevronForwardOutline } from 'react-icons/io5'
 import { TiArrowBack } from 'react-icons/ti'
 import { TbArrowsExchange, TbCsv } from 'react-icons/tb'
 import { MdOutlineGrade, MdGrade, MdHistory, MdBrowserUpdated } from 'react-icons/md'
@@ -580,6 +580,20 @@ export interface IInnerTranslatorProps {
 
 export interface ITranslatorProps extends IInnerTranslatorProps {
     engine: Styletron
+}
+
+// One entry in the in-session back/forward navigation stack: everything
+// needed to restore a translation view without re-running the translation.
+interface INavigationEntry {
+    text: string
+    translatedText: string
+    isWordMode: boolean
+    sourceLang: LangCode
+    targetLang: LangCode
+    actionId?: number
+    actionMode?: string
+    provider?: string
+    engineModel?: string
 }
 
 export function Translator(props: ITranslatorProps) {
@@ -1305,6 +1319,11 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         async (selectedWord: string, signal: AbortSignal) => {
             if (skipNextTranslateRef.current) {
                 skipNextTranslateRef.current = false
+                // The effect cleanup aborts the previous run, and the aborted
+                // run returns before its finally clears the loading state - it
+                // relies on this run taking the state over. A bail out here
+                // must therefore clear it, or the spinner never stops.
+                stopLoading()
                 return
             }
             translationIDRef.current += 1
@@ -1314,6 +1333,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             const translationID = translationIDRef.current
             const { text, sourceLang, targetLang, action } = translateDeps
             if (!text || !sourceLang || !targetLang || !action) {
+                stopLoading()
                 return
             }
             setShowWordbookButtons(false)
@@ -1566,6 +1586,199 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             unlistenHistory?.()
         }
     }, [handleHistoryRestore])
+
+    // ---- Browser-like back/forward navigation ----
+    // Drilling into a word's details from the hover card replaces the whole
+    // view, so it needs an undo. Every translation view is an entry in a
+    // bounded in-memory stack; back/forward restores the cached result
+    // instead of paying for a re-translation. Persistence across sessions is
+    // the History window's job, not this stack's.
+    const navStackRef = useRef<INavigationEntry[]>([])
+    const navIndexRef = useRef(-1)
+    const [navCan, setNavCan] = useState({ back: false, forward: false })
+    const syncNavCan = useCallback(() => {
+        setNavCan({
+            back: navIndexRef.current > 0,
+            forward: navIndexRef.current < navStackRef.current.length - 1,
+        })
+    }, [])
+
+    const currentNavView = useCallback((): Omit<INavigationEntry, 'translatedText' | 'isWordMode'> | undefined => {
+        const deps = translateDepsRef.current
+        if (!deps.text || !deps.sourceLang || !deps.targetLang || !deps.action) {
+            return undefined
+        }
+        return {
+            text: deps.text,
+            sourceLang: deps.sourceLang,
+            targetLang: deps.targetLang,
+            actionId: deps.action.id,
+            actionMode: deps.action.mode,
+            provider: deps.provider,
+            engineModel: deps.engineModel,
+        }
+    }, [])
+
+    const isSameNavView = useCallback(
+        (
+            entry: INavigationEntry | undefined,
+            view: Omit<INavigationEntry, 'translatedText' | 'isWordMode'>
+        ): entry is INavigationEntry =>
+            !!entry &&
+            entry.text === view.text &&
+            entry.sourceLang === view.sourceLang &&
+            entry.targetLang === view.targetLang &&
+            entry.actionId === view.actionId &&
+            entry.actionMode === view.actionMode,
+        []
+    )
+
+    // A translation starting on a view that is not the current stack entry is
+    // a navigation (word drill-down, new submit, language change, ...):
+    // truncate the forward branch and push it, like a browser address-bar
+    // navigation. Re-translating the current view updates it in place.
+    useEffect(() => {
+        if (!isLoading) {
+            return
+        }
+        const view = currentNavView()
+        if (!view) {
+            return
+        }
+        const stack = navStackRef.current
+        if (isSameNavView(stack[navIndexRef.current], view)) {
+            return
+        }
+        stack.splice(navIndexRef.current + 1)
+        stack.push({ ...view, translatedText: '', isWordMode: false })
+        if (stack.length > 50) {
+            stack.shift()
+        }
+        navIndexRef.current = stack.length - 1
+        syncNavCan()
+    }, [isLoading, currentNavView, isSameNavView, syncNavCan])
+
+    // Once the current view's translation settles, cache the result on its
+    // stack entry so coming back to it later is instant and free.
+    useEffect(() => {
+        if (isLoading || errorMessage || !translatedText) {
+            return
+        }
+        const view = currentNavView()
+        if (!view) {
+            return
+        }
+        const entry = navStackRef.current[navIndexRef.current]
+        if (!isSameNavView(entry, view)) {
+            return
+        }
+        entry.translatedText = translatedText
+        entry.isWordMode = isWordModeRef.current
+    }, [isLoading, translatedText, errorMessage, currentNavView, isSameNavView])
+
+    const applyNavEntry = useCallback(
+        (entry: INavigationEntry) => {
+            // Navigating away from a still-streaming view: drop the stream.
+            translateControllerRef.current?.abort()
+            stopLoading()
+            const matchedAction =
+                actions?.find((action) => action.id === entry.actionId) ??
+                actions?.find((action) => action.mode && action.mode === entry.actionMode)
+            if (matchedAction) {
+                setActivateAction(matchedAction)
+            }
+            historyEntryIdRef.current = null
+            lastHistoryKeyRef.current = null
+            setSourceLang(entry.sourceLang)
+            setTargetLang(entry.targetLang)
+            setEditableText(entry.text)
+            setTranslatedText(entry.translatedText)
+            setIsWordMode(entry.isWordMode)
+            setActionStr('')
+            setErrorMessage('')
+            setShowWordbookButtons(false)
+            setSelectedWord('')
+            setHighlightWords([])
+            const prev = translateDepsRef.current
+            const next = {
+                ...prev,
+                text: entry.text,
+                sourceLang: entry.sourceLang,
+                targetLang: entry.targetLang,
+                action: matchedAction ?? prev.action,
+                provider: entry.provider ?? prev.provider,
+                engineModel: entry.engineModel ?? prev.engineModel,
+            }
+            const depsChanged = JSON.stringify(prev) !== JSON.stringify(next)
+            // An entry with a cached result restores silently (same skip
+            // mechanism as handleHistoryRestore, with the same only-arm-when-
+            // consumed guard); an entry whose translation never finished
+            // (the user navigated away mid-stream) reloads like a browser
+            // reloads an unfinished page.
+            skipNextTranslateRef.current = depsChanged && entry.translatedText !== ''
+            setTranslateDeps(next)
+            if (!depsChanged && entry.translatedText === '') {
+                forceTranslate()
+            }
+        },
+        [actions, setActivateAction, stopLoading, forceTranslate]
+    )
+
+    const goBack = useCallback(() => {
+        if (navIndexRef.current <= 0) {
+            return
+        }
+        navIndexRef.current -= 1
+        applyNavEntry(navStackRef.current[navIndexRef.current])
+        syncNavCan()
+    }, [applyNavEntry, syncNavCan])
+
+    const goForward = useCallback(() => {
+        if (navIndexRef.current >= navStackRef.current.length - 1) {
+            return
+        }
+        navIndexRef.current += 1
+        applyNavEntry(navStackRef.current[navIndexRef.current])
+        syncNavCan()
+    }, [applyNavEntry, syncNavCan])
+
+    const goBackRef = useRef(goBack)
+    const goForwardRef = useRef(goForward)
+    useEffect(() => {
+        goBackRef.current = goBack
+        goForwardRef.current = goForward
+    }, [goBack, goForward])
+
+    // Cmd/Ctrl+[ and ], plus the mouse side buttons, like a browser.
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) {
+                return
+            }
+            if (event.key === '[') {
+                event.preventDefault()
+                goBackRef.current()
+            } else if (event.key === ']') {
+                event.preventDefault()
+                goForwardRef.current()
+            }
+        }
+        const onMouseUp = (event: MouseEvent) => {
+            if (event.button === 3) {
+                event.preventDefault()
+                goBackRef.current()
+            } else if (event.button === 4) {
+                event.preventDefault()
+                goForwardRef.current()
+            }
+        }
+        document.addEventListener('keydown', onKeyDown)
+        document.addEventListener('mouseup', onMouseUp)
+        return () => {
+            document.removeEventListener('keydown', onKeyDown)
+            document.removeEventListener('mouseup', onMouseUp)
+        }
+    }, [])
 
     useEffect(() => {
         if (!props.defaultShowSettings) {
@@ -1890,32 +2103,44 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             skipNextTranslateRef.current = false
             let action = activateAction
             if (!action) {
-                action = actions?.find((action) => action.mode === 'translate')
-                setActivateAction(action)
+                // The built-in translate action can be renamed or deleted, and
+                // on a cold start the action list may not have loaded yet.
+                action = actions?.find((a) => a.mode === 'translate') ?? actions?.[0]
+                if (action) {
+                    setActivateAction(action)
+                }
             }
-            const text = editorRef.current?.value ?? ''
-            if (action) {
-                getTranslateDeps(text, action)
-                    .then((v) => {
-                        // translateText compares deps deeply, so resubmitting
-                        // unchanged content would not retrigger it; bump the
-                        // translation flag (same mechanism as the Retry button)
-                        // so an explicit submit always runs.
-                        const unchanged = JSON.stringify(translateDepsRef.current) === JSON.stringify(v)
-                        setTranslateDeps(v)
-                        if (unchanged) {
-                            forceTranslate()
-                        }
-                    })
-                    .catch((error) => {
-                        // A rejected language detection used to kill the submit
-                        // silently; surface it instead.
-                        console.error('submit failed:', error)
-                        toast(String(error), { duration: 5000, icon: '❌' })
-                    })
+            const text = editorRef.current?.value ?? editableText
+            if (!action) {
+                // Bailing out here used to be completely silent.
+                toast(t('No available action'), { duration: 5000, icon: '❌' })
+                return
             }
+            const submittedAction = action
+            getTranslateDeps(text, submittedAction)
+                .then((v) => {
+                    // getTranslateDeps carries the previous action over, which
+                    // is empty on the very first submit; without this the
+                    // translate effect bails on its missing-deps guard.
+                    const deps = { ...v, action: submittedAction }
+                    // translateText compares deps deeply, so resubmitting
+                    // unchanged content would not retrigger it; bump the
+                    // translation flag (same mechanism as the Retry button)
+                    // so an explicit submit always runs.
+                    const unchanged = JSON.stringify(translateDepsRef.current) === JSON.stringify(deps)
+                    setTranslateDeps(deps)
+                    if (unchanged) {
+                        forceTranslate()
+                    }
+                })
+                .catch((error) => {
+                    // A rejected language detection used to kill the submit
+                    // silently; surface it instead.
+                    console.error('submit failed:', error)
+                    toast(String(error), { duration: 5000, icon: '❌' })
+                })
         },
-        [actions, activateAction, getTranslateDeps]
+        [actions, activateAction, editableText, getTranslateDeps, t]
     )
 
     const getFooterBackgroundColor = useCallback(() => {
@@ -2300,6 +2525,20 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                             onChange={(e) => setEditableText(e.target.value)}
                                             onKeyDown={(e) => {
                                                 e.stopPropagation()
+                                                if (e.key !== 'Enter' || e.shiftKey) {
+                                                    return
+                                                }
+                                                // Chrome does not fire keypress
+                                                // while an IME is composing, so
+                                                // submitting from keypress made
+                                                // the Enter that commits a
+                                                // candidate disappear; submit
+                                                // from keydown and skip the
+                                                // composing Enter instead.
+                                                if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) {
+                                                    return
+                                                }
+                                                handleSubmit(e)
                                             }}
                                             onKeyUp={(e) => {
                                                 e.stopPropagation()
@@ -2307,7 +2546,10 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                             onKeyPress={(e) => {
                                                 e.stopPropagation()
                                                 if (e.key === 'Enter' && !e.shiftKey) {
-                                                    handleSubmit(e)
+                                                    // Submitting already
+                                                    // happened on keydown; keep
+                                                    // the newline out.
+                                                    e.preventDefault()
                                                 }
                                             }}
                                         />
@@ -2842,6 +3084,26 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                             </div>
                         </Button>
                     </Tooltip>
+                    {!showSettings && (navCan.back || navCan.forward) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            <Tooltip content={t('Back')} placement='top'>
+                                <div
+                                    onClick={goBack}
+                                    className={navCan.back ? styles.actionButton : styles.actionButtonDisabled}
+                                >
+                                    <IoChevronBackOutline size={15} />
+                                </div>
+                            </Tooltip>
+                            <Tooltip content={t('Forward')} placement='top'>
+                                <div
+                                    onClick={goForward}
+                                    className={navCan.forward ? styles.actionButton : styles.actionButtonDisabled}
+                                >
+                                    <IoChevronForwardOutline size={15} />
+                                </div>
+                            </Tooltip>
+                        </div>
+                    )}
                     {!showSettings && (
                         <div className={styles.poweredBy}>
                             Powered by <div className={styles.brand}>{effectiveProvider?.name ?? t('No provider')}</div>

@@ -294,5 +294,7 @@
     "context truncated": "コンテキストは一部省略",
     "use wider context": "広い範囲を読む",
     "wider context": "広い範囲を使用中",
-    "re-detect": "再検出"
+    "re-detect": "再検出",
+    "Back": "戻る",
+    "Forward": "進む"
 }

@@ -208,6 +208,13 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         catalogKey: 'volcengine',
     },
     {
+        id: 'litellm',
+        name: 'LiteLLM',
+        protocol: 'openai-compatible',
+        baseURL: 'http://localhost:4000/v1',
+        docsURL: 'https://docs.litellm.ai',
+    },
+    {
         id: 'lmstudio',
         name: 'LM Studio',
         protocol: 'openai-compatible',
