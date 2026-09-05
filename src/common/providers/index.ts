@@ -5,11 +5,12 @@
 import { v4 as uuidv4 } from 'uuid'
 import type { ISettings } from '../types'
 import { getSettings } from '../utils'
-import { getPreset, PROVIDER_PRESETS, type ProviderPreset } from './catalog'
+import { getPreset, type ProviderPreset } from './catalog'
+import { isApiKeyRequired } from './validation'
 import type { ProviderConfig } from './types'
 
 export * from './types'
-export { PROVIDER_PRESETS, getPreset } from './catalog'
+export { PROVIDER_PRESETS, getPreset, findPreset } from './catalog'
 export type { ProviderPreset } from './catalog'
 export { streamChat, type ChatRequest } from './chat'
 export { createLanguageModel, ProviderConfigError } from './registry'
@@ -19,6 +20,15 @@ export {
     refreshModelCapabilities,
     getCapabilitySnapshotDate,
 } from './capabilities'
+export {
+    isApiKeyRequired,
+    validateProvider,
+    validateProviders,
+    type ProviderField,
+    type ProviderRequiredField,
+    type ProviderFieldError,
+    type ProviderValidationError,
+} from './validation'
 
 export class NoProviderConfiguredError extends Error {
     constructor() {
@@ -64,24 +74,6 @@ export function createProviderFromPreset(presetId: string, overrides: Partial<Pr
         model: preset?.defaultModel ?? '',
         ...overrides,
     }
-}
-
-/** Whether this provider configuration requires an API key. */
-export function isApiKeyRequired(config: ProviderConfig | undefined): boolean {
-    if (!config) {
-        return false
-    }
-    const preset = PROVIDER_PRESETS.find((p) => p.protocol === config.protocol && p.baseURL === config.baseURL)
-    if (preset?.keyless) {
-        return false
-    }
-    // Local endpoints conventionally need no credentials; requiring one here
-    // would block the common Ollama / LM Studio / vLLM setups.
-    const url = config.baseURL ?? ''
-    if (/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])/.test(url)) {
-        return false
-    }
-    return true
 }
 
 /** Whether a provider row is complete enough to attempt a request. */
