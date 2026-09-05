@@ -1,5 +1,5 @@
 import '../enable-dev-hmr'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Settings } from '../../common/components/Settings'
 import { Client as Styletron } from 'styletron-engine-atomic'
@@ -16,9 +16,10 @@ const useStyles = createUseStyles({
         display: 'flex',
         justifyContent: 'center',
         backgroundColor: props.theme.colors.backgroundSecondary,
-        minHeight: '100%',
+        minHeight: '100vh',
     }),
     container: {
+        width: '100%',
         maxWidth: '768px',
         height: '100%',
     },
@@ -29,6 +30,11 @@ const Options = () => {
     const styles = useStyles({ theme, themeType })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(window as any).__IS_OT_BROWSER_EXTENSION_OPTIONS__ = true
+
+    useEffect(() => {
+        document.documentElement.style.backgroundColor = theme.colors.backgroundSecondary
+        document.body.style.backgroundColor = theme.colors.backgroundSecondary
+    }, [theme.colors.backgroundSecondary])
 
     return (
         <div className={styles.root}>

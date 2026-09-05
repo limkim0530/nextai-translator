@@ -1612,6 +1612,8 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
     return (
         <div
             style={{
+                width: '100%',
+                boxSizing: 'border-box',
                 paddingTop: utils.isBrowserExtensionOptions() ? undefined : '136px',
                 // The translator's 42px footer floats over the pane; without room for
                 // it the last setting can never be scrolled clear of it.
@@ -1712,14 +1714,16 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         }}
                         overrides={tabOverrides}
                     />
-                    <Tab
-                        title={t('Writing')}
-                        key='writing'
-                        artwork={() => {
-                            return <PiTextbox size={16} />
-                        }}
-                        overrides={tabOverrides}
-                    />
+                    {isDesktopApp && (
+                        <Tab
+                            title={t('Writing')}
+                            key='writing'
+                            artwork={() => {
+                                return <PiTextbox size={16} />
+                            }}
+                            overrides={tabOverrides}
+                        />
+                    )}
                     <Tab
                         title={t('Shortcuts')}
                         key='shortcuts'
@@ -1950,7 +1954,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                     </div>
                     <div
                         style={{
-                            display: activeTab === 'writing' ? 'block' : 'none',
+                            display: isDesktopApp && activeTab === 'writing' ? 'block' : 'none',
                         }}
                     >
                         <FormItem
