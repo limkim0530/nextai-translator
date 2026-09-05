@@ -217,6 +217,7 @@
     "Base URL": "Base URL",
     "Leave empty to use the protocol default": "เว้นว่างไว้เพื่อใช้ค่าเริ่มต้นของโปรโตคอล",
     "Leave empty for the protocol default. “List models” corrects a missing /v1 for you.": "เว้นว่างไว้เพื่อใช้ค่าเริ่มต้นของโปรโตคอล “แสดงรายการโมเดล” จะเติม /v1 ที่ขาดไปให้",
+    "This protocol has no default endpoint. Enter the service endpoint.": "โปรโตคอลนี้ไม่มีปลายทางเริ่มต้น กรุณากรอกปลายทางของบริการ",
     "Base URL corrected to {{url}}": "แก้ไข Base URL เป็น {{url}} แล้ว",
     "Leave empty to use the provider default": "เว้นว่างไว้เพื่อใช้ค่าเริ่มต้นของผู้ให้บริการ",
     "Model": "โมเดล",

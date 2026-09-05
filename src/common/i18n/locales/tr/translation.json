@@ -217,6 +217,7 @@
     "Base URL": "Base URL",
     "Leave empty to use the protocol default": "Boş bırakılırsa protokolün varsayılanı kullanılır",
     "Leave empty for the protocol default. “List models” corrects a missing /v1 for you.": "Boş bırakılırsa protokolün varsayılanı kullanılır. “Modelleri listele” eksik /v1 adresini düzeltir.",
+    "This protocol has no default endpoint. Enter the service endpoint.": "Bu protokolün varsayılan bir uç noktası yoktur. Hizmet uç noktasını girin.",
     "Base URL corrected to {{url}}": "Temel URL {{url}} olarak düzeltildi",
     "Leave empty to use the provider default": "Boş bırakılırsa sağlayıcının varsayılanı kullanılır",
     "Model": "Model",

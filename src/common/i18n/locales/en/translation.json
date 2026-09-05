@@ -258,6 +258,7 @@
     "Base URL": "Base URL",
     "Leave empty to use the protocol default": "Leave empty to use the protocol default",
     "Leave empty for the protocol default. “List models” corrects a missing /v1 for you.": "Leave empty for the protocol default. “List models” corrects a missing /v1 for you.",
+    "This protocol has no default endpoint. Enter the service endpoint.": "This protocol has no default endpoint. Enter the service endpoint.",
     "Base URL corrected to {{url}}": "Base URL corrected to {{url}}",
     "Leave empty to use the provider default": "Leave empty to use the provider default",
     "Model": "Model",

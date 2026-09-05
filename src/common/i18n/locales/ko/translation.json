@@ -257,6 +257,7 @@
     "Base URL": "Base URL",
     "Leave empty to use the protocol default": "비워 두면 해당 프로토콜의 기본 엔드포인트를 사용합니다",
     "Leave empty for the protocol default. “List models” corrects a missing /v1 for you.": "비워 두면 프로토콜 기본값을 사용합니다. \"모델 목록 가져오기\"가 누락된 /v1을 보정합니다.",
+    "This protocol has no default endpoint. Enter the service endpoint.": "이 프로토콜에는 기본 엔드포인트가 없습니다. 서비스 엔드포인트를 입력하세요.",
     "Base URL corrected to {{url}}": "기본 URL을 {{url}}(으)로 수정했습니다",
     "Leave empty to use the provider default": "비워 두면 해당 제공자에 설정된 모델을 사용합니다",
     "Model": "모델",

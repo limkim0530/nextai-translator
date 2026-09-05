@@ -66,22 +66,33 @@ export function createProviderFromPreset(presetId: string, overrides: Partial<Pr
     }
 }
 
-/** Whether a provider row is complete enough to attempt a request. */
-export function isProviderUsable(config: ProviderConfig | undefined): config is ProviderConfig {
-    if (!config?.model?.trim()) {
+/** Whether this provider configuration requires an API key. */
+export function isApiKeyRequired(config: ProviderConfig | undefined): boolean {
+    if (!config) {
         return false
     }
     const preset = PROVIDER_PRESETS.find((p) => p.protocol === config.protocol && p.baseURL === config.baseURL)
     if (preset?.keyless) {
-        return true
+        return false
     }
     // Local endpoints conventionally need no credentials; requiring one here
     // would block the common Ollama / LM Studio / vLLM setups.
     const url = config.baseURL ?? ''
     if (/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])/.test(url)) {
-        return true
+        return false
     }
-    return !!config.apiKey?.trim()
+    return true
+}
+
+/** Whether a provider row is complete enough to attempt a request. */
+export function isProviderUsable(config: ProviderConfig | undefined): config is ProviderConfig {
+    if (!config?.model?.trim()) {
+        return false
+    }
+    if (isApiKeyRequired(config)) {
+        return !!config.apiKey?.trim()
+    }
+    return true
 }
 
 /**

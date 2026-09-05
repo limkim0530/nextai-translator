@@ -258,6 +258,7 @@
     "Base URL": "Base URL",
     "Leave empty to use the protocol default": "留空則使用該協定的預設端點",
     "Leave empty for the protocol default. “List models” corrects a missing /v1 for you.": "留空則使用該協定的預設端點。點擊「獲取模型列表」會自動補上缺少的 /v1。",
+    "This protocol has no default endpoint. Enter the service endpoint.": "目前協定無預設端點，請輸入服務介面位址。",
     "Base URL corrected to {{url}}": "已將介面位址更正為 {{url}}",
     "Leave empty to use the provider default": "留空則使用該服務商設定的模型",
     "Model": "模型",

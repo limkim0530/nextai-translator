@@ -49,6 +49,20 @@ export const PROTOCOL_DEFAULT_BASE_URL: Partial<Record<ProviderProtocol, string>
 }
 
 /**
+ * Protocols where `baseURL` is strictly required because there is no official
+ * shared host or the host must be supplied by the user (e.g. Azure resource name).
+ */
+export const PROTOCOLS_REQUIRING_BASE_URL: ReadonlySet<ProviderProtocol> = new Set([
+    'openai-compatible',
+    'open-responses',
+    'azure',
+])
+
+export function isBaseURLRequired(protocol: ProviderProtocol): boolean {
+    return PROTOCOLS_REQUIRING_BASE_URL.has(protocol)
+}
+
+/**
  * Protocols with no default endpoint, because the host is whatever the user
  * points them at. They all speak the OpenAI wire format, whose convention is a
  * `/v1` prefix — the one assumption worth making when there is nothing to read.

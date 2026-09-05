@@ -257,6 +257,7 @@
     "Base URL": "Base URL",
     "Leave empty to use the protocol default": "空欄にすると、そのプロトコルの既定のエンドポイントを使います",
     "Leave empty for the protocol default. “List models” corrects a missing /v1 for you.": "空欄にするとプロトコルの既定を使います。「モデル一覧を取得」で足りない /v1 を補正します。",
+    "This protocol has no default endpoint. Enter the service endpoint.": "このプロトコルには既定のエンドポイントがありません。サービスのエンドポイントを入力してください。",
     "Base URL corrected to {{url}}": "ベース URL を {{url}} に修正しました",
     "Leave empty to use the provider default": "空欄にすると、そのプロバイダーに設定されたモデルを使います",
     "Model": "モデル",

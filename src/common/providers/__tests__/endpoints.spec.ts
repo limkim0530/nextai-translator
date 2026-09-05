@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { baseURLCandidates, defaultPathFor, normalizeBaseURL } from '../endpoints'
+import { baseURLCandidates, defaultPathFor, isBaseURLRequired, normalizeBaseURL } from '../endpoints'
 
 describe('normalizeBaseURL', () => {
     it('fills in a missing scheme, https for a public host', () => {
@@ -107,5 +107,21 @@ describe('baseURLCandidates', () => {
     it('has nothing to offer for protocols whose endpoint is assembled elsewhere', () => {
         expect(baseURLCandidates({ protocol: 'azure' })).toEqual([])
         expect(baseURLCandidates({ protocol: 'bedrock' })).toEqual([])
+    })
+})
+
+describe('isBaseURLRequired', () => {
+    it('returns true for protocols without a fixed official host', () => {
+        expect(isBaseURLRequired('openai-compatible')).toBe(true)
+        expect(isBaseURLRequired('open-responses')).toBe(true)
+        expect(isBaseURLRequired('azure')).toBe(true)
+    })
+
+    it('returns false for protocols with default endpoints', () => {
+        expect(isBaseURLRequired('google')).toBe(false)
+        expect(isBaseURLRequired('openai')).toBe(false)
+        expect(isBaseURLRequired('anthropic')).toBe(false)
+        expect(isBaseURLRequired('deepseek')).toBe(false)
+        expect(isBaseURLRequired('ollama')).toBe(false)
     })
 })

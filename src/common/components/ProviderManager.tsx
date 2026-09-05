@@ -16,6 +16,7 @@ import type { IThemedStyleProps } from '../types'
 import {
     createProviderFromPreset,
     getReasoningControl,
+    isApiKeyRequired,
     PROVIDER_PRESETS,
     refreshModelCapabilities,
     getCapabilitySnapshotDate,
@@ -25,7 +26,7 @@ import {
     type ReasoningSelection,
 } from '../providers'
 import { listModels, type ModelOption } from '../providers/models'
-import { normalizeBaseURL } from '../providers/endpoints'
+import { isBaseURLRequired, normalizeBaseURL, PROTOCOL_DEFAULT_BASE_URL } from '../providers/endpoints'
 import { dropCachedModels, getCachedModels, putCachedModels } from '../providers/model-cache'
 import { ensureHostPermission } from '../providers/permissions'
 
@@ -136,6 +137,10 @@ const useStyles = createUseStyles({
         fontSize: '12px',
         fontWeight: 500,
         color: props.theme.colors.contentSecondary,
+    }),
+    requiredStar: (props: IThemedStyleProps) => ({
+        color: props.theme.colors.contentNegative ?? '#d44',
+        marginLeft: '2px',
     }),
     caption: (props: IThemedStyleProps) => ({
         fontSize: '11px',
@@ -528,7 +533,10 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
             {selected && (
                 <div className={styles.editor}>
                     <div className={styles.field}>
-                        <div className={styles.label}>{t('Name')}</div>
+                        <div className={styles.label}>
+                            {t('Name')}
+                            <span className={styles.requiredStar}>*</span>
+                        </div>
                         <Input
                             size='compact'
                             value={selected.name}
@@ -553,31 +561,50 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                         </div>
                     </div>
 
-                    <div className={styles.field}>
-                        <div className={styles.label}>{t('Base URL')}</div>
-                        <Input
-                            size='compact'
-                            value={selected.baseURL ?? ''}
-                            placeholder={t('Leave empty to use the protocol default') ?? ''}
-                            onChange={(e) => update({ baseURL: (e.target as HTMLInputElement).value })}
-                            onBlur={() => {
-                                // Only the unambiguous cleanups — a missing
-                                // scheme, a pasted `/chat/completions`. Whether
-                                // the host wants a version prefix is decided by
-                                // asking it, in "List models".
-                                const normalized = normalizeBaseURL(selected.baseURL, selected.protocol)
-                                if (normalized && normalized !== selected.baseURL) {
-                                    update({ baseURL: normalized })
-                                }
-                            }}
-                        />
-                        <div className={styles.caption}>
-                            {t('Leave empty for the protocol default. “List models” corrects a missing /v1 for you.')}
-                        </div>
-                    </div>
+                    {(() => {
+                        const isBaseRequired = isBaseURLRequired(selected.protocol)
+                        const defaultBaseURL = PROTOCOL_DEFAULT_BASE_URL[selected.protocol]
+                        const placeholder = isBaseRequired
+                            ? selected.protocol === 'azure'
+                                ? 'https://<your-resource>.openai.azure.com'
+                                : 'https://api.example.com/v1'
+                            : (defaultBaseURL ?? t('Leave empty to use the protocol default') ?? '')
+                        const caption = isBaseRequired
+                            ? t('This protocol has no default endpoint. Enter the service endpoint.')
+                            : t('Leave empty for the protocol default. “List models” corrects a missing /v1 for you.')
+
+                        return (
+                            <div className={styles.field}>
+                                <div className={styles.label}>
+                                    {t('Base URL')}
+                                    {isBaseRequired && <span className={styles.requiredStar}>*</span>}
+                                </div>
+                                <Input
+                                    size='compact'
+                                    value={selected.baseURL ?? ''}
+                                    placeholder={placeholder}
+                                    onChange={(e) => update({ baseURL: (e.target as HTMLInputElement).value })}
+                                    onBlur={() => {
+                                        // Only the unambiguous cleanups — a missing
+                                        // scheme, a pasted `/chat/completions`. Whether
+                                        // the host wants a version prefix is decided by
+                                        // asking it, in "List models".
+                                        const normalized = normalizeBaseURL(selected.baseURL, selected.protocol)
+                                        if (normalized && normalized !== selected.baseURL) {
+                                            update({ baseURL: normalized })
+                                        }
+                                    }}
+                                />
+                                <div className={styles.caption}>{caption}</div>
+                            </div>
+                        )
+                    })()}
 
                     <div className={styles.field}>
-                        <div className={styles.label}>{t('API Key')}</div>
+                        <div className={styles.label}>
+                            {t('API Key')}
+                            {isApiKeyRequired(selected) && <span className={styles.requiredStar}>*</span>}
+                        </div>
                         <Input
                             size='compact'
                             type='password'
@@ -587,7 +614,10 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                     </div>
 
                     <div className={styles.field}>
-                        <div className={styles.label}>{t('Model')}</div>
+                        <div className={styles.label}>
+                            {t('Model')}
+                            <span className={styles.requiredStar}>*</span>
+                        </div>
                         <div className={styles.inlineRow}>
                             <div style={{ flex: 1 }}>
                                 {models.length > 0 ? (
