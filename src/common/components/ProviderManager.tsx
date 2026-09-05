@@ -9,12 +9,14 @@ import { createUseStyles } from 'react-jss'
 import { IoMdAdd } from 'react-icons/io'
 import { RiDeleteBin5Line } from 'react-icons/ri'
 import { IoRefreshSharp } from 'react-icons/io5'
-import toast from 'react-hot-toast'
+import { RxExternalLink } from 'react-icons/rx'
+import { toast } from './Toaster'
 import { useTheme } from '../hooks/useTheme'
 import { ProviderIcon } from './ProviderIcon'
 import type { IThemedStyleProps } from '../types'
 import {
     createProviderFromPreset,
+    findPreset,
     getReasoningControl,
     isApiKeyRequired,
     PROVIDER_PRESETS,
@@ -24,9 +26,17 @@ import {
     type ProviderProtocol,
     type ReasoningControl,
     type ReasoningSelection,
+    validateProvider,
+    type ProviderRequiredField,
 } from '../providers'
 import { listModels, type ModelOption } from '../providers/models'
-import { isBaseURLRequired, normalizeBaseURL, PROTOCOL_DEFAULT_BASE_URL } from '../providers/endpoints'
+import {
+    isBaseURLRequired,
+    normalizeBaseURL,
+    PROTOCOL_DEFAULT_BASE_URL,
+    PROTOCOL_PLACEHOLDER_API_KEY,
+    PROTOCOL_PLACEHOLDER_BASE_URL,
+} from '../providers/endpoints'
 import { dropCachedModels, getCachedModels, putCachedModels } from '../providers/model-cache'
 import { ensureHostPermission } from '../providers/permissions'
 
@@ -133,6 +143,22 @@ const useStyles = createUseStyles({
         flexDirection: 'column',
         gap: '4px',
     },
+    labelRow: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    docsLink: (props: IThemedStyleProps) => ({
+        'display': 'inline-flex',
+        'alignItems': 'center',
+        'gap': '4px',
+        'fontSize': '11px',
+        'color': props.theme.colors.linkText ?? props.theme.colors.primary,
+        'textDecoration': 'none',
+        ':hover': {
+            textDecoration: 'underline',
+        },
+    }),
     label: (props: IThemedStyleProps) => ({
         fontSize: '12px',
         fontWeight: 500,
@@ -146,6 +172,12 @@ const useStyles = createUseStyles({
         fontSize: '11px',
         lineHeight: 1.5,
         color: props.theme.colors.contentTertiary,
+    }),
+    errorCaption: (props: IThemedStyleProps) => ({
+        fontSize: '11px',
+        lineHeight: 1.4,
+        color: props.theme.colors.contentNegative ?? '#d44',
+        marginTop: '2px',
     }),
     inlineRow: {
         display: 'flex',
@@ -164,6 +196,9 @@ const useStyles = createUseStyles({
 export interface IProviderManagerProps {
     providers: ProviderConfig[]
     defaultProviderId?: string
+    selectedId?: string
+    onSelectId?: (id: string | undefined) => void
+    showErrors?: boolean
     onChange: (providers: ProviderConfig[], defaultProviderId?: string) => void
 }
 
@@ -303,16 +338,42 @@ function JSONField({
     )
 }
 
-export function ProviderManager({ providers, defaultProviderId, onChange }: IProviderManagerProps) {
+export function ProviderManager({
+    providers,
+    defaultProviderId,
+    selectedId: controlledSelectedId,
+    onSelectId,
+    showErrors = false,
+    onChange,
+}: IProviderManagerProps) {
     const { t } = useTranslation()
     const { theme, themeType } = useTheme()
     const styles = useStyles({ theme, themeType })
 
-    const [selectedId, setSelectedId] = useState<string | undefined>(defaultProviderId ?? providers[0]?.id)
+    const [uncontrolledSelectedId, setUncontrolledSelectedId] = useState<string | undefined>(
+        defaultProviderId ?? providers[0]?.id
+    )
+    const selectedId = controlledSelectedId !== undefined ? controlledSelectedId : uncontrolledSelectedId
+    const setSelectedId = useCallback(
+        (id: string | undefined) => {
+            if (controlledSelectedId === undefined) {
+                setUncontrolledSelectedId(id)
+            }
+            onSelectId?.(id)
+        },
+        [controlledSelectedId, onSelectId]
+    )
+
+    const [touched, setTouched] = useState<Partial<Record<ProviderRequiredField, boolean>>>({})
     const [models, setModels] = useState<ModelOption[]>([])
     const [loadingModels, setLoadingModels] = useState(false)
     const [snapshot, setSnapshot] = useState<{ date: string; source: 'runtime' | 'baked' }>()
     const [refreshing, setRefreshing] = useState(false)
+
+    // Reset touched state when changing selected provider
+    useEffect(() => {
+        setTouched({})
+    }, [selectedId])
 
     // Read by the cache-restore effect, which must not re-run when an unrelated
     // field of an unrelated provider changes.
@@ -326,6 +387,35 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
     }, [])
 
     const selected = useMemo(() => providers.find((p) => p.id === selectedId), [providers, selectedId])
+
+    useEffect(() => {
+        if (!selected && providers.length > 0) {
+            const fallbackId = defaultProviderId ?? providers[0]?.id
+            if (controlledSelectedId === undefined) {
+                setUncontrolledSelectedId(fallbackId)
+            }
+            onSelectId?.(fallbackId)
+        }
+    }, [selected, providers, defaultProviderId, controlledSelectedId, onSelectId])
+
+    const fieldErrors = useMemo(() => {
+        const errors = new Map<ProviderRequiredField, string>()
+        for (const err of validateProvider(selected)) {
+            errors.set(err.field, err.messageKey)
+        }
+        return errors
+    }, [selected])
+
+    const isFieldInvalid = useCallback(
+        (field: ProviderRequiredField) => {
+            return Boolean((showErrors || touched[field]) && fieldErrors.has(field))
+        },
+        [showErrors, touched, fieldErrors]
+    )
+
+    const markTouched = useCallback((field: ProviderRequiredField) => {
+        setTouched((prev) => ({ ...prev, [field]: true }))
+    }, [])
 
     /**
      * Restore the last listing for whichever provider is open.
@@ -376,7 +466,7 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
             onChange(next, defaultProviderId ?? created.id)
             setSelectedId(created.id)
         },
-        [providers, onChange, defaultProviderId]
+        [providers, onChange, defaultProviderId, setSelectedId]
     )
 
     const removeProvider = useCallback(
@@ -389,11 +479,21 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                 setSelectedId(next[0]?.id)
             }
         },
-        [providers, onChange, defaultProviderId, selectedId]
+        [providers, onChange, defaultProviderId, selectedId, setSelectedId]
     )
 
     const loadModels = useCallback(async () => {
         if (!selected) {
+            return
+        }
+        if (isBaseURLRequired(selected.protocol) && !selected.baseURL?.trim()) {
+            markTouched('baseURL')
+            toast.warning(t('Please enter Base URL first'))
+            return
+        }
+        if (isApiKeyRequired(selected) && !selected.apiKey?.trim()) {
+            markTouched('apiKey')
+            toast.warning(t('Please enter API key first'))
             return
         }
         setLoadingModels(true)
@@ -422,12 +522,23 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                 toast.success(t('Base URL corrected to {{url}}', { url: baseURL }))
             }
             await putCachedModels(baseURL ? { ...selected, baseURL } : selected, found)
+
+            if (error) {
+                toast.warning(
+                    t('Could not reach endpoint ({{error}}). Loaded {{count}} models from offline catalog.', {
+                        error,
+                        count: found.length,
+                    })
+                )
+            } else {
+                toast.success(t('Loaded {{count}} models', { count: found.length }))
+            }
         } catch (e) {
             toast.error(e instanceof Error ? e.message : String(e))
         } finally {
             setLoadingModels(false)
         }
-    }, [selected, update, t])
+    }, [selected, markTouched, update, t])
 
     const refreshCatalog = useCallback(async () => {
         setRefreshing(true)
@@ -445,52 +556,64 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
     return (
         <div className={styles.root}>
             <div className={styles.list}>
-                {providers.map((provider) => (
-                    <div
-                        key={provider.id}
-                        className={`${styles.row} ${provider.id === selectedId ? styles.rowActive : ''}`}
-                        onClick={() => {
-                            setSelectedId(provider.id)
-                        }}
-                    >
-                        <div className={styles.rowMain}>
-                            <div className={styles.rowName}>
-                                <ProviderIcon provider={provider} size={14} style={{ flexShrink: 0 }} />
-                                {provider.name || t('Unnamed provider')}
+                {providers.map((provider) => {
+                    const hasError = showErrors && validateProvider(provider).length > 0
+                    return (
+                        <div
+                            key={provider.id}
+                            className={`${styles.row} ${provider.id === selectedId ? styles.rowActive : ''}`}
+                            onClick={() => {
+                                setSelectedId(provider.id)
+                            }}
+                        >
+                            <div className={styles.rowMain}>
+                                <div className={styles.rowName}>
+                                    <ProviderIcon provider={provider} size={14} style={{ flexShrink: 0 }} />
+                                    <span
+                                        style={hasError ? { color: theme.colors.contentNegative ?? '#d44' } : undefined}
+                                    >
+                                        {provider.name || t('Unnamed provider')}
+                                    </span>
+                                    {hasError && <span className={styles.requiredStar}>*</span>}
+                                </div>
+                                <div className={styles.rowMeta}>
+                                    {provider.protocol}
+                                    {provider.model ? ` · ${provider.model}` : ` · ${t('no model')}`}
+                                </div>
                             </div>
-                            <div className={styles.rowMeta}>
-                                {provider.protocol}
-                                {provider.model ? ` · ${provider.model}` : ` · ${t('no model')}`}
-                            </div>
-                        </div>
-                        {provider.id === defaultProviderId ? (
-                            <Tag closeable={false} hierarchy={TAG_HIERARCHY.primary} kind='accent'>
-                                {t('Default')}
-                            </Tag>
-                        ) : (
+                            {provider.id === defaultProviderId ? (
+                                <Tag closeable={false} hierarchy={TAG_HIERARCHY.primary} kind='accent'>
+                                    {t('Default')}
+                                </Tag>
+                            ) : (
+                                <Button
+                                    type='button'
+                                    size='mini'
+                                    kind='tertiary'
+                                    onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        onChange(providers, provider.id)
+                                    }}
+                                >
+                                    {t('Set default')}
+                                </Button>
+                            )}
                             <Button
+                                type='button'
                                 size='mini'
                                 kind='tertiary'
                                 onClick={(e) => {
+                                    e.preventDefault()
                                     e.stopPropagation()
-                                    onChange(providers, provider.id)
+                                    removeProvider(provider.id)
                                 }}
                             >
-                                {t('Set default')}
+                                <RiDeleteBin5Line size={13} />
                             </Button>
-                        )}
-                        <Button
-                            size='mini'
-                            kind='tertiary'
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                removeProvider(provider.id)
-                            }}
-                        >
-                            <RiDeleteBin5Line size={13} />
-                        </Button>
-                    </div>
-                ))}
+                        </div>
+                    )
+                })}
                 {providers.length === 0 && (
                     <div className={styles.caption}>{t('No providers configured yet. Add one below.')}</div>
                 )}
@@ -525,7 +648,15 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                         )}
                     />
                 </div>
-                <Button size='compact' kind='secondary' onClick={() => addProvider('custom-openai')}>
+                <Button
+                    type='button'
+                    size='compact'
+                    kind='secondary'
+                    onClick={(e) => {
+                        e.preventDefault()
+                        addProvider('custom-openai')
+                    }}
+                >
                     <IoMdAdd size={14} />
                 </Button>
             </div>
@@ -540,8 +671,13 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                         <Input
                             size='compact'
                             value={selected.name}
+                            error={isFieldInvalid('name')}
                             onChange={(e) => update({ name: (e.target as HTMLInputElement).value })}
+                            onBlur={() => markTouched('name')}
                         />
+                        {isFieldInvalid('name') && (
+                            <div className={styles.errorCaption}>{t(fieldErrors.get('name')!)}</div>
+                        )}
                     </div>
 
                     <div className={styles.field}>
@@ -565,9 +701,7 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                         const isBaseRequired = isBaseURLRequired(selected.protocol)
                         const defaultBaseURL = PROTOCOL_DEFAULT_BASE_URL[selected.protocol]
                         const placeholder = isBaseRequired
-                            ? selected.protocol === 'azure'
-                                ? 'https://<your-resource>.openai.azure.com'
-                                : 'https://api.example.com/v1'
+                            ? (PROTOCOL_PLACEHOLDER_BASE_URL[selected.protocol] ?? 'https://api.example.com/v1')
                             : (defaultBaseURL ?? t('Leave empty to use the protocol default') ?? '')
                         const caption = isBaseRequired
                             ? t('This protocol has no default endpoint. Enter the service endpoint.')
@@ -583,8 +717,10 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                                     size='compact'
                                     value={selected.baseURL ?? ''}
                                     placeholder={placeholder}
+                                    error={isFieldInvalid('baseURL')}
                                     onChange={(e) => update({ baseURL: (e.target as HTMLInputElement).value })}
                                     onBlur={() => {
+                                        markTouched('baseURL')
                                         // Only the unambiguous cleanups — a missing
                                         // scheme, a pasted `/chat/completions`. Whether
                                         // the host wants a version prefix is decided by
@@ -595,23 +731,54 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                                         }
                                     }}
                                 />
+                                {isFieldInvalid('baseURL') && (
+                                    <div className={styles.errorCaption}>{t(fieldErrors.get('baseURL')!)}</div>
+                                )}
                                 <div className={styles.caption}>{caption}</div>
                             </div>
                         )
                     })()}
 
-                    <div className={styles.field}>
-                        <div className={styles.label}>
-                            {t('API Key')}
-                            {isApiKeyRequired(selected) && <span className={styles.requiredStar}>*</span>}
-                        </div>
-                        <Input
-                            size='compact'
-                            type='password'
-                            value={selected.apiKey ?? ''}
-                            onChange={(e) => update({ apiKey: (e.target as HTMLInputElement).value })}
-                        />
-                    </div>
+                    {(() => {
+                        const preset = findPreset(selected)
+                        const docsURL = preset?.docsURL
+                        const apiKeyRequired = isApiKeyRequired(selected)
+                        const placeholder = apiKeyRequired
+                            ? (preset?.apiKeyPlaceholder ??
+                              PROTOCOL_PLACEHOLDER_API_KEY[selected.protocol] ??
+                              t('Enter API key') ??
+                              '')
+                            : (t('Optional') ?? '')
+
+                        return (
+                            <div className={styles.field}>
+                                <div className={styles.labelRow}>
+                                    <div className={styles.label}>
+                                        {t('API Key')}
+                                        {apiKeyRequired && <span className={styles.requiredStar}>*</span>}
+                                    </div>
+                                    {docsURL && (
+                                        <a href={docsURL} target='_blank' rel='noreferrer' className={styles.docsLink}>
+                                            <span>{apiKeyRequired ? t('Get API key') : t('Documentation')}</span>
+                                            <RxExternalLink size={11} />
+                                        </a>
+                                    )}
+                                </div>
+                                <Input
+                                    size='compact'
+                                    type='password'
+                                    value={selected.apiKey ?? ''}
+                                    placeholder={placeholder}
+                                    error={isFieldInvalid('apiKey')}
+                                    onChange={(e) => update({ apiKey: (e.target as HTMLInputElement).value })}
+                                    onBlur={() => markTouched('apiKey')}
+                                />
+                                {isFieldInvalid('apiKey') && (
+                                    <div className={styles.errorCaption}>{t(fieldErrors.get('apiKey')!)}</div>
+                                )}
+                            </div>
+                        )
+                    })()}
 
                     <div className={styles.field}>
                         <div className={styles.label}>
@@ -628,26 +795,45 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                                         // a model released since the last fetch
                                         // still has to be typeable.
                                         creatable
+                                        error={isFieldInvalid('model')}
                                         options={models.map((m) => ({
                                             id: m.id,
                                             label: m.reasoning ? `${m.id} · ${t('reasoning')}` : m.id,
                                         }))}
                                         value={selected.model ? [{ id: selected.model }] : []}
-                                        onChange={(params) => update({ model: String(params.value[0]?.id ?? '') })}
+                                        onChange={(params) => {
+                                            update({ model: String(params.value[0]?.id ?? '') })
+                                            markTouched('model')
+                                        }}
+                                        onBlur={() => markTouched('model')}
                                     />
                                 ) : (
                                     <Input
                                         size='compact'
                                         value={selected.model}
                                         placeholder={t('Model id') ?? ''}
+                                        error={isFieldInvalid('model')}
                                         onChange={(e) => update({ model: (e.target as HTMLInputElement).value })}
+                                        onBlur={() => markTouched('model')}
                                     />
                                 )}
                             </div>
-                            <Button size='compact' kind='secondary' isLoading={loadingModels} onClick={loadModels}>
+                            <Button
+                                type='button'
+                                size='compact'
+                                kind='secondary'
+                                isLoading={loadingModels}
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    loadModels()
+                                }}
+                            >
                                 {t('List models')}
                             </Button>
                         </div>
+                        {isFieldInvalid('model') && (
+                            <div className={styles.errorCaption}>{t(fieldErrors.get('model')!)}</div>
+                        )}
                     </div>
 
                     <ReasoningField config={selected} onChange={(reasoning) => update({ reasoning })} />
@@ -678,7 +864,16 @@ export function ProviderManager({ providers, defaultProviderId, onChange }: IPro
                     {snapshot ? ` · ${snapshot.date}` : ''}
                     {snapshot?.source === 'baked' ? ` · ${t('bundled')}` : ''}
                 </span>
-                <Button size='mini' kind='tertiary' isLoading={refreshing} onClick={refreshCatalog}>
+                <Button
+                    type='button'
+                    size='mini'
+                    kind='tertiary'
+                    isLoading={refreshing}
+                    onClick={(e) => {
+                        e.preventDefault()
+                        refreshCatalog()
+                    }}
+                >
                     <IoRefreshSharp size={12} />
                     &nbsp;{t('Refresh')}
                 </Button>

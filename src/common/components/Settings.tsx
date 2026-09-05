@@ -3,7 +3,6 @@ import _ from 'underscore'
 import { Tabs, Tab, StyledTabList, StyledTabPanel } from 'baseui/tabs-motion'
 import icon from '../assets/images/icon-large.png'
 import beams from '../assets/images/beams.jpg'
-import toast from 'react-hot-toast'
 import * as utils from '../utils'
 import { Client as Styletron } from 'styletron-engine-atomic'
 import { Provider as StyletronProvider } from 'styletron-react'
@@ -38,7 +37,7 @@ import { Action } from '../internal-services/db'
 import { GlobalSuspense } from './GlobalSuspense'
 
 import { ProviderManager } from './ProviderManager'
-import type { ProviderConfig } from '../providers'
+import { validateProviders, type ProviderConfig } from '../providers'
 import { PiTextbox } from 'react-icons/pi'
 import { BsKeyboard } from 'react-icons/bs'
 import { TbCloudNetwork } from 'react-icons/tb'
@@ -48,7 +47,7 @@ import useSWR from 'swr'
 
 import { Skeleton } from 'baseui/skeleton'
 import { SpeakerIcon } from './SpeakerIcon'
-import Toaster from './Toaster'
+import Toaster, { toast } from './Toaster'
 import { RxSpeakerLoud } from 'react-icons/rx'
 
 import { Textarea } from 'baseui/textarea'
@@ -260,6 +259,7 @@ function SpeakerButton({
 
     return (
         <Button
+            type='button'
             shape='circle'
             size='mini'
             {...buttonProps}
@@ -645,6 +645,7 @@ function TTSVoicesSettings({ value, onChange, onBlur }: ITTSVoicesSettingsProps)
                         />
                     )}
                     <Button
+                        type='button'
                         size='mini'
                         overrides={{
                             Root: {
@@ -1328,6 +1329,8 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
     const { settings, setSettings } = useSettings()
     const [values, setValues] = useState<ISettings>(settings)
     const [prevValues, setPrevValues] = useState<ISettings>(values)
+    const [selectedProviderId, setSelectedProviderId] = useState<string | undefined>()
+    const [showProviderErrors, setShowProviderErrors] = useState(false)
 
     const valuesRef = useRef(values)
     useEffect(() => {
@@ -1398,7 +1401,10 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
             form.setFieldsValue({ providers, defaultProviderId: nextDefault })
             setValues((prev) => {
                 const next = { ...prev, providers, defaultProviderId: nextDefault }
-                void utils.setSettings({ providers, defaultProviderId: nextDefault })
+                if (validateProviders(providers).length === 0) {
+                    void utils.setSettings({ providers, defaultProviderId: nextDefault })
+                    setShowProviderErrors(false)
+                }
                 return next
             })
         },
@@ -1413,6 +1419,21 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
             // rendered fields only, so save it over the state that also holds
             // the provider list rather than in place of it.
             const data: ISettings = { ...valuesRef.current, ...submitted }
+
+            const providerErrors = validateProviders(data.providers ?? [])
+            if (providerErrors.length > 0) {
+                const first = providerErrors[0]
+                setSelectedProviderId(first.providerId)
+                setShowProviderErrors(true)
+                toast.error(
+                    t('Provider "{{name}}" is missing required fields', {
+                        name: first.providerName,
+                    })
+                )
+                setLoading(false)
+                return
+            }
+
             if (isTauri) {
                 try {
                     const {
@@ -1442,6 +1463,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                 icon: '👍',
                 duration: 3000,
             })
+            setShowProviderErrors(false)
             setLoading(false)
             setSettings(data)
             onSave?.(oldSettings)
@@ -1451,7 +1473,15 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
 
     const onBlur = useCallback(async () => {
         if (!_.isEqual(values, prevValues)) {
-            await utils.setSettings(values)
+            const dataToSave =
+                validateProviders(values.providers ?? []).length === 0
+                    ? values
+                    : {
+                          ...values,
+                          providers: prevValues.providers,
+                          defaultProviderId: prevValues.defaultProviderId,
+                      }
+            await utils.setSettings(dataToSave)
             setPrevValues(values)
         }
     }, [prevValues, values])
@@ -1736,6 +1766,9 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                             <ProviderManager
                                 providers={values.providers ?? []}
                                 defaultProviderId={values.defaultProviderId}
+                                selectedId={selectedProviderId}
+                                onSelectId={setSelectedProviderId}
+                                showErrors={showProviderErrors}
                                 onChange={handleProvidersChange}
                             />
                         </div>
