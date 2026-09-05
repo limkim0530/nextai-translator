@@ -63,6 +63,30 @@ export function isBaseURLRequired(protocol: ProviderProtocol): boolean {
 }
 
 /**
+ * Example placeholder URLs for protocols that require a custom endpoint.
+ */
+export const PROTOCOL_PLACEHOLDER_BASE_URL: Partial<Record<ProviderProtocol, string>> = {
+    'azure': 'https://<your-resource>.openai.azure.com',
+    'openai-compatible': 'https://api.example.com/v1',
+    'open-responses': 'https://api.example.com/v1',
+}
+
+/**
+ * Example placeholder API key prefixes for protocols.
+ */
+export const PROTOCOL_PLACEHOLDER_API_KEY: Partial<Record<ProviderProtocol, string>> = {
+    'openai': 'sk-...',
+    'openai-compatible': 'sk-...',
+    'open-responses': 'sk-...',
+    'anthropic': 'sk-ant-...',
+    'google': 'AIza...',
+    'deepseek': 'sk-...',
+    'groq': 'gsk_...',
+    'xai': 'xai-...',
+    'moonshotai': 'sk-...',
+}
+
+/**
  * Protocols with no default endpoint, because the host is whatever the user
  * points them at. They all speak the OpenAI wire format, whose convention is a
  * `/v1` prefix — the one assumption worth making when there is nothing to read.
@@ -147,17 +171,18 @@ export function defaultPathFor(protocol: ProviderProtocol): string | undefined {
  * first returns "no such route".
  */
 export function baseURLCandidates(config: Pick<ProviderConfig, 'protocol' | 'baseURL'>): string[] {
-    const base = normalizeBaseURL(config.baseURL, config.protocol) ?? PROTOCOL_DEFAULT_BASE_URL[config.protocol]
-    if (!base) {
-        return []
+    const userBase = normalizeBaseURL(config.baseURL, config.protocol)
+    if (!userBase) {
+        const defaultBase = PROTOCOL_DEFAULT_BASE_URL[config.protocol]
+        return defaultBase ? [defaultBase] : []
     }
     const path = defaultPathFor(config.protocol)
     if (!path) {
-        return [base]
+        return [userBase]
     }
-    if (base.toLowerCase().endsWith(path.toLowerCase())) {
-        const stripped = base.slice(0, -path.length).replace(/\/+$/, '')
-        return hasHost(stripped) ? [base, stripped] : [base]
+    if (userBase.toLowerCase().endsWith(path.toLowerCase())) {
+        const stripped = userBase.slice(0, -path.length).replace(/\/+$/, '')
+        return hasHost(stripped) ? [userBase, stripped] : [userBase]
     }
-    return [base, base + path]
+    return [userBase, userBase + path]
 }

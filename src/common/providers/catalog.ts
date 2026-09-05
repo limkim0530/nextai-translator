@@ -1,4 +1,4 @@
-import type { ProviderProtocol } from './types'
+import type { ProviderConfig, ProviderProtocol } from './types'
 
 /**
  * A built-in starting point for a provider instance.
@@ -21,6 +21,7 @@ export interface ProviderPreset {
     /** Endpoints that legitimately take no credentials. */
     keyless?: boolean
     docsURL?: string
+    apiKeyPlaceholder?: string
 }
 
 /**
@@ -86,6 +87,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'groq',
         catalogKey: 'groq',
         defaultModel: 'llama-3.3-70b-versatile',
+        docsURL: 'https://console.groq.com/keys',
     },
     {
         id: 'mistral',
@@ -93,6 +95,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'mistral',
         catalogKey: 'mistral',
         defaultModel: 'mistral-large-latest',
+        docsURL: 'https://console.mistral.ai/api-keys',
     },
     {
         id: 'cohere',
@@ -100,6 +103,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'cohere',
         catalogKey: 'cohere',
         defaultModel: 'command-a-03-2025',
+        docsURL: 'https://dashboard.cohere.com/api-keys',
     },
     {
         id: 'cerebras',
@@ -107,24 +111,28 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'cerebras',
         catalogKey: 'cerebras',
         defaultModel: 'llama-3.3-70b',
+        docsURL: 'https://cloud.cerebras.ai',
     },
     {
         id: 'fireworks',
         name: 'Fireworks',
         protocol: 'fireworks',
         catalogKey: 'fireworks-ai',
+        docsURL: 'https://fireworks.ai/api-keys',
     },
     {
         id: 'togetherai',
         name: 'Together AI',
         protocol: 'togetherai',
         catalogKey: 'togetherai',
+        docsURL: 'https://api.together.ai/settings/api-keys',
     },
     {
         id: 'deepinfra',
         name: 'DeepInfra',
         protocol: 'deepinfra',
         catalogKey: 'deepinfra',
+        docsURL: 'https://deepinfra.com/dash/api_keys',
     },
     {
         id: 'perplexity',
@@ -132,6 +140,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'perplexity',
         catalogKey: 'perplexity',
         defaultModel: 'sonar',
+        docsURL: 'https://www.perplexity.ai/settings/api',
     },
     {
         id: 'alibaba',
@@ -146,6 +155,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'moonshotai',
         catalogKey: 'moonshotai',
         defaultModel: 'kimi-k2',
+        docsURL: 'https://platform.moonshot.cn/console/api-keys',
     },
     {
         id: 'huggingface',
@@ -171,6 +181,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         baseURL: 'http://127.0.0.1:11434',
         catalogKey: 'ollama',
         keyless: true,
+        docsURL: 'https://ollama.com',
     },
     {
         id: 'litellm',
@@ -185,6 +196,8 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'openai-compatible',
         baseURL: 'https://openrouter.ai/api/v1',
         catalogKey: 'openrouter',
+        docsURL: 'https://openrouter.ai/keys',
+        apiKeyPlaceholder: 'sk-or-...',
     },
     {
         id: 'siliconflow',
@@ -192,6 +205,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'openai-compatible',
         baseURL: 'https://api.siliconflow.cn/v1',
         catalogKey: 'siliconflow',
+        docsURL: 'https://cloud.siliconflow.cn/account/ak',
     },
     {
         id: 'minimax',
@@ -199,6 +213,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'openai-compatible',
         baseURL: 'https://api.minimax.chat/v1',
         catalogKey: 'minimax',
+        docsURL: 'https://platform.minimaxi.com/user-center/basic-information/interface-key',
     },
     {
         id: 'zhipu',
@@ -206,6 +221,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'openai-compatible',
         baseURL: 'https://open.bigmodel.cn/api/paas/v4',
         catalogKey: 'zhipuai',
+        docsURL: 'https://open.bigmodel.cn/usercenter/apikeys',
     },
     {
         id: 'volcengine',
@@ -213,6 +229,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'openai-compatible',
         baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
         catalogKey: 'volcengine',
+        docsURL: 'https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey',
     },
     {
         id: 'lmstudio',
@@ -220,19 +237,47 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
         protocol: 'openai-compatible',
         baseURL: 'http://127.0.0.1:1234/v1',
         keyless: true,
+        docsURL: 'https://lmstudio.ai',
     },
     {
         id: 'custom-openai',
         name: 'Custom (OpenAI-compatible)',
         protocol: 'openai-compatible',
+        apiKeyPlaceholder: 'sk-...',
     },
     {
         id: 'custom-responses',
         name: 'Custom (OpenAI Responses)',
         protocol: 'open-responses',
+        apiKeyPlaceholder: 'sk-...',
     },
 ]
 
 export function getPreset(id: string): ProviderPreset | undefined {
     return PROVIDER_PRESETS.find((preset) => preset.id === id)
+}
+
+/**
+ * Resolve the preset corresponding to a configured provider instance.
+ *
+ * Checks exact protocol and baseURL first, then catalogKey, and falls back to
+ * the protocol default preset.
+ */
+export function findPreset(config: ProviderConfig | undefined): ProviderPreset | undefined {
+    if (!config) {
+        return undefined
+    }
+    const exact = PROVIDER_PRESETS.find(
+        (p) => p.protocol === config.protocol && (p.baseURL ?? undefined) === (config.baseURL ?? undefined)
+    )
+    if (exact) {
+        return exact
+    }
+    if (config.catalogKey) {
+        const byCatalog = PROVIDER_PRESETS.find((p) => p.catalogKey === config.catalogKey)
+        if (byCatalog) {
+            return byCatalog
+        }
+    }
+    return PROVIDER_PRESETS.find((p) => p.protocol === config.protocol && !p.baseURL)
 }

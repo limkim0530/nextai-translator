@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { baseURLCandidates, defaultPathFor, isBaseURLRequired, normalizeBaseURL } from '../endpoints'
+import {
+    baseURLCandidates,
+    defaultPathFor,
+    isBaseURLRequired,
+    normalizeBaseURL,
+    PROTOCOL_PLACEHOLDER_API_KEY,
+    PROTOCOL_PLACEHOLDER_BASE_URL,
+} from '../endpoints'
 
 describe('normalizeBaseURL', () => {
     it('fills in a missing scheme, https for a public host', () => {
@@ -91,11 +98,8 @@ describe('baseURLCandidates', () => {
         ])
     })
 
-    it('falls back to the protocol default when no base URL is set', () => {
-        expect(baseURLCandidates({ protocol: 'openai' })).toEqual([
-            'https://api.openai.com/v1',
-            'https://api.openai.com',
-        ])
+    it('falls back to the protocol default without guessing when no base URL is set', () => {
+        expect(baseURLCandidates({ protocol: 'openai' })).toEqual(['https://api.openai.com/v1'])
     })
 
     it('offers a single candidate for a protocol with no prefix to add or remove', () => {
@@ -123,5 +127,24 @@ describe('isBaseURLRequired', () => {
         expect(isBaseURLRequired('anthropic')).toBe(false)
         expect(isBaseURLRequired('deepseek')).toBe(false)
         expect(isBaseURLRequired('ollama')).toBe(false)
+    })
+})
+
+describe('PROTOCOL_PLACEHOLDER_BASE_URL', () => {
+    it('defines expected placeholders for protocols requiring custom hosts', () => {
+        expect(PROTOCOL_PLACEHOLDER_BASE_URL.azure).toBe('https://<your-resource>.openai.azure.com')
+        expect(PROTOCOL_PLACEHOLDER_BASE_URL['openai-compatible']).toBe('https://api.example.com/v1')
+        expect(PROTOCOL_PLACEHOLDER_BASE_URL['open-responses']).toBe('https://api.example.com/v1')
+    })
+})
+
+describe('PROTOCOL_PLACEHOLDER_API_KEY', () => {
+    it('defines expected API key prefix placeholders for protocols', () => {
+        expect(PROTOCOL_PLACEHOLDER_API_KEY.openai).toBe('sk-...')
+        expect(PROTOCOL_PLACEHOLDER_API_KEY['openai-compatible']).toBe('sk-...')
+        expect(PROTOCOL_PLACEHOLDER_API_KEY.anthropic).toBe('sk-ant-...')
+        expect(PROTOCOL_PLACEHOLDER_API_KEY.google).toBe('AIza...')
+        expect(PROTOCOL_PLACEHOLDER_API_KEY.deepseek).toBe('sk-...')
+        expect(PROTOCOL_PLACEHOLDER_API_KEY.groq).toBe('gsk_...')
     })
 })
