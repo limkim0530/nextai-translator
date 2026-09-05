@@ -8,7 +8,7 @@ import { Tag, HIERARCHY as TAG_HIERARCHY } from 'baseui/tag'
 import { createUseStyles } from 'react-jss'
 import { IoMdAdd } from 'react-icons/io'
 import { RiDeleteBin5Line } from 'react-icons/ri'
-import { IoRefreshSharp } from 'react-icons/io5'
+import { MdRefresh } from 'react-icons/md'
 import { RxExternalLink } from 'react-icons/rx'
 import { toast } from './Toaster'
 import { useTheme } from '../hooks/useTheme'
@@ -568,7 +568,7 @@ export function ProviderManager({
                         >
                             <div className={styles.rowMain}>
                                 <div className={styles.rowName}>
-                                    <ProviderIcon provider={provider} size={14} style={{ flexShrink: 0 }} />
+                                    <ProviderIcon provider={provider} size={16} style={{ flexShrink: 0 }} />
                                     <span
                                         style={hasError ? { color: theme.colors.contentNegative ?? '#d44' } : undefined}
                                     >
@@ -636,13 +636,13 @@ export function ProviderManager({
                         }}
                         getOptionLabel={({ option }) => (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <ProviderIcon presetId={String(option.id)} size={14} style={{ flexShrink: 0 }} />
+                                <ProviderIcon presetId={String(option.id)} size={16} style={{ flexShrink: 0 }} />
                                 <span>{String(option.label)}</span>
                             </div>
                         )}
                         getValueLabel={({ option }) => (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <ProviderIcon presetId={String(option.id)} size={14} style={{ flexShrink: 0 }} />
+                                <ProviderIcon presetId={String(option.id)} size={16} style={{ flexShrink: 0 }} />
                                 <span>{String(option.label)}</span>
                             </div>
                         )}
@@ -874,7 +874,7 @@ export function ProviderManager({
                         refreshCatalog()
                     }}
                 >
-                    <IoRefreshSharp size={12} />
+                    <MdRefresh size={13} />
                     &nbsp;{t('Refresh')}
                 </Button>
             </div>

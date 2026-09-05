@@ -814,7 +814,7 @@ pub fn get_settings_window() -> tauri::WebviewWindow {
             )
             .title("NextAI Translator Settings")
             .fullscreen(false)
-            .inner_size(660.0, 800.0)
+            .inner_size(720.0, 800.0)
             .min_inner_size(660.0, 600.0)
             .resizable(true)
             .skip_taskbar(true)

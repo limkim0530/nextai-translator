@@ -24,8 +24,9 @@ import { useTranslation } from 'react-i18next'
 import AppConfig from '../../../package.json'
 import { useSettings } from '../hooks/useSettings'
 import { defaultTTSProvider, langCode2TTSLang, ttsLangTestTextMap } from '../tts'
-import { RiDeleteBin5Line } from 'react-icons/ri'
-import { IoIosSave, IoMdAdd } from 'react-icons/io'
+import { RiDeleteBin5Line, RiCloudLine } from 'react-icons/ri'
+import { IoMdAdd } from 'react-icons/io'
+import { MdSave } from 'react-icons/md'
 import { TTSProvider } from '../tts/types'
 import { fetchEdgeVoices } from '../tts/edge-tts'
 import { fetchLocalVoices } from '../tts/local-tts'
@@ -40,7 +41,6 @@ import { ProviderManager } from './ProviderManager'
 import { validateProviders, type ProviderConfig } from '../providers'
 import { PiTextbox } from 'react-icons/pi'
 import { BsKeyboard } from 'react-icons/bs'
-import { TbCloudNetwork } from 'react-icons/tb'
 import { Cell, Grid } from 'baseui/layout-grid'
 
 import useSWR from 'swr'
@@ -1549,7 +1549,13 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
             },
         },
         TabList: {
-            style: () => ({}),
+            style: {
+                'overflowX': 'auto',
+                'scrollbarWidth': 'none',
+                '::-webkit-scrollbar': {
+                    display: 'none',
+                },
+            },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             component: function TabsListOverride(props: any) {
                 return (
@@ -1583,6 +1589,8 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
             style: {
                 'color': theme.colors.black,
                 'background': 'transparent',
+                'whiteSpace': 'nowrap',
+                'flexShrink': 0,
                 ':hover': {
                     background: 'rgba(255, 255, 255, 0.35) !important',
                 },
@@ -1682,7 +1690,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         title={t('General')}
                         key='general'
                         artwork={() => {
-                            return <IoSettingsOutline size={14} />
+                            return <IoSettingsOutline size={16} />
                         }}
                         overrides={tabOverrides}
                     />
@@ -1691,7 +1699,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                             title={t('Proxy')}
                             key='proxy'
                             artwork={() => {
-                                return <TbCloudNetwork size={14} />
+                                return <RiCloudLine size={16} />
                             }}
                             overrides={tabOverrides}
                         />
@@ -1700,7 +1708,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         title={t('TTS')}
                         key='tts'
                         artwork={() => {
-                            return <RxSpeakerLoud size={14} />
+                            return <RxSpeakerLoud size={16} />
                         }}
                         overrides={tabOverrides}
                     />
@@ -1708,7 +1716,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         title={t('Writing')}
                         key='writing'
                         artwork={() => {
-                            return <PiTextbox size={14} />
+                            return <PiTextbox size={16} />
                         }}
                         overrides={tabOverrides}
                     />
@@ -1716,7 +1724,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         title={t('Shortcuts')}
                         key='shortcuts'
                         artwork={() => {
-                            return <BsKeyboard size={14} />
+                            return <BsKeyboard size={16} />
                         }}
                         overrides={{
                             ...tabOverrides,
@@ -2029,7 +2037,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                             marginRight: 'auto',
                         }}
                     />
-                    <Button isLoading={loading} size='mini' startEnhancer={<IoIosSave size={12} />}>
+                    <Button isLoading={loading} size='mini' startEnhancer={<MdSave size={14} />}>
                         {t('Save')}
                     </Button>
                 </div>

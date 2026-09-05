@@ -16,7 +16,7 @@ export function OllamaIcon(props: IconBaseProps) {
         <Logo
             className={styles.icon}
             height={props.size}
-            width={typeof props.size === 'number' ? props.size * (646 / 854) : undefined}
+            width={typeof props.size === 'number' ? Math.round(props.size * (646 / 854)) : undefined}
         />
     )
 }

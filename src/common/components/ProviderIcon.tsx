@@ -1,10 +1,9 @@
 import type { ComponentType } from 'react'
 import type { IconBaseProps } from 'react-icons'
-import { RiOpenaiFill } from 'react-icons/ri'
+import { RiOpenaiFill, RiCloudLine } from 'react-icons/ri'
 import { FaGoogle } from 'react-icons/fa'
 import { VscAzure } from 'react-icons/vsc'
 import { SiHuggingface } from 'react-icons/si'
-import { TbCloudNetwork } from 'react-icons/tb'
 
 import { CerebrasIcon } from './icons/CerebrasIcon'
 import { ChatGLMIcon } from './icons/ChatGLMIcon'
@@ -24,7 +23,7 @@ export function getProviderIconComponent(
     target?:
         string | ProviderConfig | { name?: string; protocol?: string; catalogKey?: string; baseURL?: string } | null
 ): ComponentType<IconBaseProps> {
-    if (!target) return TbCloudNetwork
+    if (!target) return RiCloudLine
 
     if (typeof target === 'string') {
         const id = target.toLowerCase()
@@ -44,7 +43,7 @@ export function getProviderIconComponent(
         if (id.includes('zhipu') || id.includes('chatglm') || id.includes('glm')) return ChatGLMIcon
         if (id.includes('azure')) return VscAzure
         if (id.includes('huggingface')) return SiHuggingface
-        return TbCloudNetwork
+        return RiCloudLine
     }
 
     const { name = '', protocol = '', catalogKey = '', baseURL = '' } = target
@@ -89,7 +88,7 @@ export function getProviderIconComponent(
     if (lowerName.includes('azure') || lowerProto === 'azure' || lowerKey === 'azure') return VscAzure
     if (lowerName.includes('huggingface') || lowerKey === 'huggingface') return SiHuggingface
 
-    return TbCloudNetwork
+    return RiCloudLine
 }
 
 export interface ProviderIconProps extends IconBaseProps {
