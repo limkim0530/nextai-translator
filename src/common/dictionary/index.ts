@@ -59,31 +59,7 @@ export async function lookupWord(
         providers: settings?.providers,
     }
 
-    try {
-        const preview = await adapter.lookup(trimmedWord, provider, options)
-        lookupCache.set(normalizedKey, preview)
-        return preview
-    } catch (error) {
-        if ((error as Error).name === 'AbortError') {
-            throw error
-        }
-        // Fallback to Free Dictionary or Datamuse if primary provider fails
-        if (provider.protocol !== 'free-dictionary' && provider.protocol !== 'datamuse') {
-            try {
-                const fallbackAdapter = getDictionaryAdapter('datamuse')
-                const fallbackPreview = await fallbackAdapter.lookup(
-                    trimmedWord,
-                    DEFAULT_DICTIONARY_PROVIDERS[1],
-                    options
-                )
-                if (fallbackPreview) {
-                    lookupCache.set(normalizedKey, fallbackPreview)
-                    return fallbackPreview
-                }
-            } catch {
-                // Ignore fallback error
-            }
-        }
-        throw error
-    }
+    const preview = await adapter.lookup(trimmedWord, provider, options)
+    lookupCache.set(normalizedKey, preview)
+    return preview
 }
