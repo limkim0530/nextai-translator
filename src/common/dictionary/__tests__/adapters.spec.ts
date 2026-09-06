@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import * as universalFetch from '../../universal-fetch'
 import { parseFreeDictionaryResponse } from '../adapters/freeDictionary'
 import { parseDatamuseResponse } from '../adapters/datamuse'
 import { parseGoogleGtxResponse } from '../adapters/google'
-import { parseMicrosoftResponse } from '../adapters/microsoft'
+import { microsoftAdapter, parseMicrosoftResponse } from '../adapters/microsoft'
 import { parseYoudaoResponse } from '../adapters/youdao'
 import { parseLlmDictionaryResponse } from '../adapters/llm'
 
@@ -102,7 +103,7 @@ describe('Dictionary Adapters', () => {
         })
     })
 
-    describe('Microsoft Edge Adapter', () => {
+    describe('Microsoft Azure Adapter', () => {
         it('parses valid microsoft response with grouped translations', () => {
             const raw = [
                 {
@@ -131,7 +132,99 @@ describe('Dictionary Adapters', () => {
             expect(result?.meanings).toHaveLength(1)
             expect(result?.meanings[0].partOfSpeech).toBe('n.')
             expect(result?.meanings[0].definition).toBe('苹果；苹果树')
-            expect(result?.sourceName).toBe('Microsoft Edge')
+            expect(result?.sourceName).toBe('Azure Translator')
+        })
+
+        it('throws error when apiKey is missing in lookup', async () => {
+            await expect(
+                microsoftAdapter.lookup('apple', {
+                    id: 'ms-test',
+                    name: 'Azure',
+                    protocol: 'microsoft',
+                })
+            ).rejects.toThrow('Azure Translator requires an API Key')
+        })
+
+        it('sends correct API key and Region headers on lookup', async () => {
+            let capturedUrl = ''
+            let capturedHeaders: Record<string, string> = {}
+
+            const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+                capturedUrl = url
+                capturedHeaders = (init?.headers as Record<string, string>) || {}
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => [
+                        {
+                            normalizedSource: 'apple',
+                            displaySource: 'apple',
+                            translations: [
+                                {
+                                    displayTarget: '苹果',
+                                    posTag: 'NOUN',
+                                },
+                            ],
+                        },
+                    ],
+                }
+            })
+
+            vi.spyOn(universalFetch, 'getUniversalFetch').mockReturnValue(mockFetch as unknown as typeof fetch)
+
+            const result = await microsoftAdapter.lookup('apple', {
+                id: 'ms-test',
+                name: 'Azure',
+                protocol: 'microsoft',
+                apiKey: 'test-key-123',
+                region: 'eastus',
+            })
+
+            expect(capturedUrl).toContain('api.cognitive.microsofttranslator.com/dictionary/lookup')
+            expect(capturedHeaders['Ocp-Apim-Subscription-Key']).toBe('test-key-123')
+            expect(capturedHeaders['Ocp-Apim-Subscription-Region']).toBe('eastus')
+            expect(result?.meanings[0].definition).toBe('苹果')
+        })
+
+        it('falls back to /translate when dictionary/lookup has no match', async () => {
+            const urlsCalled: string[] = []
+
+            const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+                urlsCalled.push(url)
+                if (url.includes('/dictionary/lookup')) {
+                    // Empty dictionary lookup result
+                    return {
+                        ok: true,
+                        status: 200,
+                        json: async () => [],
+                    }
+                }
+                // Translate endpoint fallback
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => [
+                        {
+                            translations: [{ text: '机器学习' }],
+                        },
+                    ],
+                }
+            })
+
+            vi.spyOn(universalFetch, 'getUniversalFetch').mockReturnValue(mockFetch as unknown as typeof fetch)
+
+            const result = await microsoftAdapter.lookup('machine learning', {
+                id: 'ms-test',
+                name: 'Azure',
+                protocol: 'microsoft',
+                apiKey: 'test-key-123',
+            })
+
+            expect(urlsCalled.some((u) => u.includes('/dictionary/lookup'))).toBe(true)
+            expect(urlsCalled.some((u) => u.includes('/translate'))).toBe(true)
+            expect(result).not.toBeNull()
+            expect(result?.meanings[0].definition).toBe('机器学习')
+            expect(result?.sourceName).toBe('Azure Translator')
         })
     })
 

@@ -40,11 +40,13 @@ export const DICTIONARY_PRESETS: DictionaryPreset[] = [
     },
     {
         id: 'microsoft',
-        name: 'Microsoft Edge Dictionary',
+        name: 'Azure Translator',
         protocol: 'microsoft',
-        keyless: true,
-        docsURL: 'https://www.microsoft.com/translator/',
-        description: 'Microsoft Edge cognitive lookup with POS tags, definitions, and back-translations.',
+        keyless: false,
+        docsURL: 'https://learn.microsoft.com/azure/ai-services/translator/',
+        baseURL: 'https://api.cognitive.microsofttranslator.com',
+        description:
+            'Official Microsoft Azure AI Translator with POS tags, definitions, and translations (Free 2M chars/mo with F0).',
     },
     {
         id: 'youdao',
@@ -111,8 +113,9 @@ export const DEFAULT_DICTIONARY_PROVIDERS: DictionaryProviderConfig[] = [
     },
     {
         id: 'default-microsoft',
-        name: 'Microsoft Edge Dictionary',
+        name: 'Azure Translator',
         protocol: 'microsoft',
+        baseURL: 'https://api.cognitive.microsofttranslator.com',
     },
     {
         id: 'default-llm',

@@ -19,35 +19,11 @@ const MS_POS_MAP: Record<string, string> = {
     conj: 'conj.',
 }
 
-let cachedEdgeToken: { token: string; expiresAt: number } | null = null
-
-async function getEdgeToken(signal?: AbortSignal): Promise<string> {
-    const now = Date.now()
-    if (cachedEdgeToken && cachedEdgeToken.expiresAt > now) {
-        return cachedEdgeToken.token
-    }
-
-    const fetcher = getUniversalFetch()
-    const resp = await fetcher('https://edge.microsoft.com/translate/auth', {
-        method: 'GET',
-        headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
-        },
-        signal,
-    })
-
-    if (!resp.ok) {
-        throw new Error(`Failed to fetch Microsoft Edge token: status ${resp.status}`)
-    }
-
-    const token = await resp.text()
-    // Edge token is valid for 10 minutes, cache for 8 minutes
-    cachedEdgeToken = {
-        token,
-        expiresAt: now + 8 * 60 * 1000,
-    }
-    return token
+interface MicrosoftTranslateItem {
+    translations?: Array<{
+        text?: string
+        to?: string
+    }>
 }
 
 interface MicrosoftTranslationItem {
@@ -106,7 +82,7 @@ export function parseMicrosoftResponse(payload: unknown, fallbackWord: string): 
     return {
         word: result.displaySource || fallbackWord,
         meanings,
-        sourceName: 'Microsoft Edge',
+        sourceName: 'Azure Translator',
     }
 }
 
@@ -116,41 +92,85 @@ export const microsoftAdapter: DictionaryAdapter = {
         config: DictionaryProviderConfig,
         options?: DictionaryLookupOptions
     ): Promise<WordLookupPreview | null> {
+        const apiKey = config.apiKey?.trim()
+        if (!apiKey) {
+            throw new Error('Azure Translator requires an API Key. Please configure your Subscription Key in Settings.')
+        }
+
         const targetLang = options?.targetLang || 'zh-Hans'
         const fetcher = getUniversalFetch()
+        const baseUrl = config.baseURL?.trim().replace(/\/+$/, '') || 'https://api.cognitive.microsofttranslator.com'
 
-        let url =
-            config.baseURL?.trim() ||
-            `https://api-edge.cognitive.microsofttranslator.com/dictionary/lookup?api-version=3.0&from=en&to=${encodeURIComponent(targetLang)}`
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
+            'Ocp-Apim-Subscription-Key': apiKey,
             ...(config.headers || {}),
         }
 
-        if (config.apiKey) {
-            // Azure Translator subscription key
-            if (!config.baseURL) {
-                url = `https://api.cognitive.microsofttranslator.com/dictionary/lookup?api-version=3.0&from=en&to=${encodeURIComponent(targetLang)}`
-            }
-            headers['Ocp-Apim-Subscription-Key'] = config.apiKey
-        } else {
-            // Free Edge cognitive token
-            const token = await getEdgeToken(options?.signal)
-            headers['Authorization'] = `Bearer ${token}`
+        if (config.region?.trim()) {
+            headers['Ocp-Apim-Subscription-Region'] = config.region.trim()
         }
 
-        const response = await fetcher(url, {
+        // 1. First try dictionary/lookup
+        const lookupUrl = `${baseUrl}/dictionary/lookup?api-version=3.0&from=en&to=${encodeURIComponent(targetLang)}`
+        try {
+            const response = await fetcher(lookupUrl, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify([{ Text: word }]),
+                signal: options?.signal,
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                const preview = parseMicrosoftResponse(data, word)
+                if (preview) {
+                    return preview
+                }
+            } else if (response.status === 401) {
+                throw new Error('Azure Translator authentication failed (401). Please verify your API Key and Region.')
+            } else if (response.status !== 400 && response.status !== 404) {
+                throw new Error(`Azure Translator error (status ${response.status})`)
+            }
+        } catch (err) {
+            if (err instanceof Error && (err.message.includes('401') || err.message.includes('API Key'))) {
+                throw err
+            }
+            // For other lookup failures, attempt fallback to /translate below
+        }
+
+        // 2. Fallback to /translate for phrases or words without dictionary definitions
+        const translateUrl = `${baseUrl}/translate?api-version=3.0&to=${encodeURIComponent(targetLang)}`
+        const transResponse = await fetcher(translateUrl, {
             method: 'POST',
             headers,
             body: JSON.stringify([{ Text: word }]),
             signal: options?.signal,
         })
 
-        if (!response.ok) {
-            throw new Error(`Microsoft dictionary lookup failed with status ${response.status}`)
+        if (!transResponse.ok) {
+            if (transResponse.status === 401) {
+                throw new Error('Azure Translator authentication failed (401). Please verify your API Key and Region.')
+            }
+            throw new Error(`Azure Translator request failed with status ${transResponse.status}`)
         }
 
-        const data = await response.json()
-        return parseMicrosoftResponse(data, word)
+        const transData = (await transResponse.json()) as MicrosoftTranslateItem[]
+        if (Array.isArray(transData) && transData[0]?.translations?.length) {
+            const transText = transData[0].translations[0].text
+            if (transText) {
+                return {
+                    word,
+                    meanings: [
+                        {
+                            definition: transText,
+                        },
+                    ],
+                    sourceName: 'Azure Translator',
+                }
+            }
+        }
+
+        return null
     },
 }

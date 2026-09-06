@@ -447,7 +447,8 @@ export function DictionaryManager({
                             {/* Base URL for endpoints that support custom endpoints */}
                             {(selectedConfig.protocol === 'free-dictionary' ||
                                 selectedConfig.protocol === 'datamuse' ||
-                                selectedConfig.protocol === 'youdao') && (
+                                selectedConfig.protocol === 'youdao' ||
+                                selectedConfig.protocol === 'microsoft') && (
                                 <div className={styles.field}>
                                     <div className={styles.label}>{t('Base URL')}</div>
                                     <Input
@@ -485,7 +486,45 @@ export function DictionaryManager({
                                 </>
                             )}
 
-                            {(selectedConfig.protocol === 'google' || selectedConfig.protocol === 'microsoft') && (
+                            {selectedConfig.protocol === 'microsoft' && (
+                                <>
+                                    <div className={styles.field}>
+                                        <div className={styles.labelRow}>
+                                            <span className={styles.label}>
+                                                {t('API Key')}
+                                                <span className={styles.requiredStar}>*</span>
+                                            </span>
+                                        </div>
+                                        <Input
+                                            type='password'
+                                            size='compact'
+                                            placeholder='Ocp-Apim-Subscription-Key'
+                                            value={selectedConfig.apiKey ?? ''}
+                                            error={!selectedConfig.apiKey?.trim()}
+                                            onChange={(e) => handleUpdate({ apiKey: e.currentTarget.value })}
+                                        />
+                                        <span className={styles.caption}>
+                                            {t('Azure Translator Subscription Key (Key 1 or Key 2 from Azure Portal)')}
+                                        </span>
+                                    </div>
+                                    <div className={styles.field}>
+                                        <span className={styles.label}>{t('Region')}</span>
+                                        <Input
+                                            size='compact'
+                                            placeholder='global, eastus, southeastasia...'
+                                            value={selectedConfig.region ?? ''}
+                                            onChange={(e) => handleUpdate({ region: e.currentTarget.value })}
+                                        />
+                                        <span className={styles.caption}>
+                                            {t(
+                                                'Required for regional resources (e.g. eastus, global). Matches your Azure resource location.'
+                                            )}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
+
+                            {selectedConfig.protocol === 'google' && (
                                 <div className={styles.field}>
                                     <span className={styles.label}>{t('API Key (Optional)')}</span>
                                     <Input
