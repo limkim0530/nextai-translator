@@ -169,7 +169,7 @@ export default function InnerContainer({ children, reference, compact }: Props) 
                 className={styles.container}
                 id={popupCardInnerContainerId}
                 style={{
-                    width: showSettings ? '500px' : 'max-content',
+                    width: showSettings ? `${popupCardMaxWidth}px` : 'max-content',
                 }}
             >
                 {children}

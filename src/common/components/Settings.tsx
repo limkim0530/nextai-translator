@@ -1418,9 +1418,37 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             component: function TabsListOverride(props: any) {
                 return (
-                    <Grid behavior='fluid'>
-                        <Cell span={12}>
-                            <StyledTabList {...props} />
+                    <Grid
+                        behavior='fluid'
+                        overrides={{
+                            Grid: {
+                                style: {
+                                    flexWrap: 'nowrap',
+                                    maxWidth: '100%',
+                                },
+                            },
+                        }}
+                    >
+                        <Cell
+                            span={12}
+                            overrides={{
+                                Cell: {
+                                    style: {
+                                        minWidth: 0,
+                                        maxWidth: '100%',
+                                    },
+                                },
+                            }}
+                        >
+                            <StyledTabList
+                                {...props}
+                                onWheel={(e: React.WheelEvent<HTMLDivElement>) => {
+                                    props.onWheel?.(e)
+                                    if (e.deltaY && !e.deltaX) {
+                                        e.currentTarget.scrollLeft += e.deltaY
+                                    }
+                                }}
+                            />
                         </Cell>
                     </Grid>
                 )
@@ -1450,6 +1478,8 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                 'background': 'transparent',
                 'whiteSpace': 'nowrap',
                 'flexShrink': 0,
+                'paddingLeft': '14px',
+                'paddingRight': '14px',
                 ':hover': {
                     background: 'rgba(255, 255, 255, 0.35) !important',
                 },
@@ -1478,7 +1508,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                 // it the last setting can never be scrolled clear of it.
                 paddingBottom: utils.isBrowserExtensionOptions() ? undefined : inPopupCard ? '52px' : '32px',
                 background: isDesktopApp ? 'transparent' : theme.colors.backgroundPrimary,
-                minWidth: isDesktopApp ? 450 : inPopupCard ? 500 : 400,
+                minWidth: isDesktopApp ? 450 : 400,
                 flex: inPopupCard ? '1 1 auto' : undefined,
                 minHeight: inPopupCard ? 0 : undefined,
                 overflowY: inPopupCard ? 'auto' : undefined,

@@ -86,4 +86,26 @@ describe('popup card dragging', () => {
 
         expect(card().style.transform).toBe('translate(0px,0px)')
     })
+
+    it('sets width to max-content when showSettings is false and expands to popupCardMaxWidth in settings', async () => {
+        const { createStore, Provider } = await import('jotai')
+        const { showSettingsAtom } = await import('../../common/store/setting')
+        const { popupCardMaxWidth } = await import('./consts')
+
+        expect(card().style.width).toBe('max-content')
+
+        const store = createStore()
+        store.set(showSettingsAtom, true)
+        act(() => {
+            root.render(
+                <Provider store={store}>
+                    <InnerContainer reference={document.body}>
+                        <div data-tauri-drag-region>title bar</div>
+                    </InnerContainer>
+                </Provider>
+            )
+        })
+
+        expect(card().style.width).toBe(`${popupCardMaxWidth}px`)
+    })
 })

@@ -151,11 +151,17 @@ const useStyles = createUseStyles({
         fontSize: '12px',
         fontStyle: 'italic',
     }),
+    'footer': {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '8px',
+        marginTop: '12px',
+    },
     'footerButton': (props: IThemedStyleProps) => ({
         'display': 'inline-flex',
         'alignItems': 'center',
         'gap': '4px',
-        'marginTop': '12px',
         'padding': 0,
         'border': 'none',
         'background': 'none',
@@ -173,10 +179,12 @@ const useStyles = createUseStyles({
         'display': 'inline-flex',
         'alignItems': 'center',
         'gap': '3px',
-        'marginTop': '9px',
+        'marginLeft': 'auto',
         'color': props.theme.colors.contentTertiary,
-        'fontSize': '10px',
+        'fontSize': '11px',
         'textDecoration': 'none',
+        'whiteSpace': 'nowrap',
+        'flexShrink': 0,
         '&:hover': {
             color: props.theme.colors.contentSecondary,
         },
@@ -372,28 +380,30 @@ export function WordHoverProvider({ children, enabled = true, onOpenDetails }: W
                     {status === 'error' ? t('Preview unavailable') : t('No concise definition found')}
                 </div>
             )}
-            <button type='button' className={styles.footerButton} onClick={() => openDetails(activeWord.word)}>
-                {t('Open full definition')}
-                <RxArrowRight size={13} />
-            </button>
-            {preview?.sourceName || preview?.sourceUrl ? (
-                preview.sourceUrl ? (
-                    <a
-                        className={styles.sourceLink}
-                        href={preview.sourceUrl}
-                        target='_blank'
-                        rel='noreferrer'
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        {t('Source: {{name}}', { name: preview.sourceName || 'Dictionary' })}
-                        <RxExternalLink size={9} />
-                    </a>
-                ) : (
-                    <span className={styles.sourceLink}>
-                        {t('Source: {{name}}', { name: preview.sourceName || 'Dictionary' })}
-                    </span>
-                )
-            ) : null}
+            <div className={styles.footer}>
+                <button type='button' className={styles.footerButton} onClick={() => openDetails(activeWord.word)}>
+                    {t('Open full definition')}
+                    <RxArrowRight size={13} />
+                </button>
+                {preview?.sourceName || preview?.sourceUrl ? (
+                    preview.sourceUrl ? (
+                        <a
+                            className={styles.sourceLink}
+                            href={preview.sourceUrl}
+                            target='_blank'
+                            rel='noreferrer'
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            {t('Source: {{name}}', { name: preview.sourceName || 'Dictionary' })}
+                            <RxExternalLink size={9} />
+                        </a>
+                    ) : (
+                        <span className={styles.sourceLink}>
+                            {t('Source: {{name}}', { name: preview.sourceName || 'Dictionary' })}
+                        </span>
+                    )
+                ) : null}
+            </div>
         </div>
     ) : null
     const rootNode = activeWord?.anchor.getRootNode()

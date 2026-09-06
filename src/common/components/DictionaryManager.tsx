@@ -385,7 +385,10 @@ export function DictionaryManager({
                         <div className={styles.editor}>
                             <div className={styles.field}>
                                 <div className={styles.labelRow}>
-                                    <span className={styles.label}>{t('Providers')}</span>
+                                    <span className={styles.label}>
+                                        {t('Name')}
+                                        <span className={styles.requiredStar}>*</span>
+                                    </span>
                                     {preset?.docsURL && (
                                         <a
                                             className={styles.docsLink}
@@ -401,8 +404,12 @@ export function DictionaryManager({
                                 <Input
                                     size='compact'
                                     value={getDisplayName(selectedConfig)}
+                                    error={!selectedConfig.name?.trim()}
                                     onChange={(e) => handleUpdate({ name: e.currentTarget.value })}
                                 />
+                                {!selectedConfig.name?.trim() && (
+                                    <div className={styles.errorCaption}>{t('Name is required')}</div>
+                                )}
                             </div>
 
                             <div className={styles.field}>
@@ -451,7 +458,6 @@ export function DictionaryManager({
                                     />
                                     <span className={styles.caption}>
                                         {t('Leave empty to use the protocol default')}
-                                        {preset?.baseURL ? ` (${preset.baseURL})` : ''}
                                     </span>
                                 </div>
                             )}
@@ -565,7 +571,7 @@ export function DictionaryManager({
                                                 ) : null}
                                                 <div style={{ marginTop: '4px' }}>
                                                     {testResult.meanings.map((m, i) => (
-                                                        <div key={i}>
+                                                        <div key={i} style={{ marginTop: i > 0 ? '6px' : '0' }}>
                                                             {m.partOfSpeech && (
                                                                 <span
                                                                     style={{ fontStyle: 'italic', marginRight: '4px' }}
@@ -574,6 +580,18 @@ export function DictionaryManager({
                                                                 </span>
                                                             )}
                                                             <span>{m.definition}</span>
+                                                            {m.example && (
+                                                                <div
+                                                                    style={{
+                                                                        marginTop: '2px',
+                                                                        color: theme.colors.contentTertiary,
+                                                                        fontSize: '12px',
+                                                                        fontStyle: 'italic',
+                                                                    }}
+                                                                >
+                                                                    {m.example}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ))}
                                                 </div>
