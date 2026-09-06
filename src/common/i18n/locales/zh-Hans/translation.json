@@ -338,5 +338,19 @@
     "AI Model (LLM)": "AI 模型查词 (LLM)",
     "Custom (OpenAI-compatible)": "自定义 (OpenAI 兼容)",
     "Custom (OpenAI Responses)": "自定义 (OpenAI Responses)",
-    "New provider": "新服务商"
+    "New provider": "新服务商",
+    "Multilingual": "多语言",
+    "ZH-EN Bilingual": "中英双语",
+    "English Only": "英文",
+    "Phonetic": "含音标",
+    "No Phonetic": "无音标",
+    "Examples": "含例句",
+    "No Examples": "无例句",
+    "Capabilities": "特性支持",
+    "Definitions Language": "释义语言",
+    "Phonetic Symbols": "音标符号",
+    "Example Sentences": "例句展示",
+    "Supported": "支持",
+    "Not Supported": "不支持",
+    "Multilingual (Chinese-Foreign)": "多语言（中外互译）"
 }

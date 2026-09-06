@@ -336,5 +336,19 @@
     "Custom REST API": "Custom REST API",
     "Custom (OpenAI-compatible)": "Custom (OpenAI-compatible)",
     "Custom (OpenAI Responses)": "Custom (OpenAI Responses)",
-    "New provider": "New provider"
+    "New provider": "New provider",
+    "Multilingual": "Multilingual",
+    "ZH-EN Bilingual": "ZH-EN Bilingual",
+    "English Only": "English",
+    "Phonetic": "Phonetic",
+    "No Phonetic": "No Phonetic",
+    "Examples": "Examples",
+    "No Examples": "No Examples",
+    "Capabilities": "Capabilities",
+    "Definitions Language": "Definitions Language",
+    "Phonetic Symbols": "Phonetic Symbols",
+    "Example Sentences": "Example Sentences",
+    "Supported": "Supported",
+    "Not Supported": "Not Supported",
+    "Multilingual (Chinese-Foreign)": "Multilingual (Chinese-Foreign)"
 }

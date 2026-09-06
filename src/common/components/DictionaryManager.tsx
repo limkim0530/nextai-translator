@@ -15,6 +15,8 @@ import {
     DICTIONARY_PRESETS,
     createDictionaryProviderFromPreset,
     findDictionaryPreset,
+    getDictionaryCapabilities,
+    type DictionaryCapabilities,
     type DictionaryPreset,
     type DictionaryProtocol,
     type DictionaryProviderConfig,
@@ -154,7 +156,77 @@ const useStyles = createUseStyles({
         background: props.theme.colors.backgroundPrimary,
         border: `1px solid ${props.theme.colors.borderOpaque}`,
     }),
+    capBadges: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+        flexWrap: 'wrap',
+    },
+    capBadge: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '1px 5px',
+        borderRadius: '4px',
+        fontSize: '10px',
+        fontWeight: 500,
+        lineHeight: 1.4,
+        letterSpacing: '0.01em',
+    },
+    capBadgeLang: (props: IThemedStyleProps) => ({
+        color: props.themeType === 'dark' ? '#93c5fd' : '#1d4ed8',
+        background: props.themeType === 'dark' ? 'rgba(59, 130, 246, 0.18)' : 'rgba(59, 130, 246, 0.1)',
+        border: `1px solid ${props.themeType === 'dark' ? 'rgba(59, 130, 246, 0.28)' : 'rgba(59, 130, 246, 0.2)'}`,
+    }),
+    capBadgePositive: (props: IThemedStyleProps) => ({
+        color: props.themeType === 'dark' ? '#86efac' : '#15803d',
+        background: props.themeType === 'dark' ? 'rgba(34, 197, 94, 0.16)' : 'rgba(34, 197, 94, 0.1)',
+        border: `1px solid ${props.themeType === 'dark' ? 'rgba(34, 197, 94, 0.28)' : 'rgba(34, 197, 94, 0.2)'}`,
+    }),
+    capBadgeNeutral: (props: IThemedStyleProps) => ({
+        color: props.theme.colors.contentTertiary,
+        background: props.themeType === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+        border: `1px solid ${props.themeType === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'}`,
+    }),
+    capabilitiesBox: (props: IThemedStyleProps) => ({
+        padding: '10px 12px',
+        borderRadius: '6px',
+        background: props.themeType === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+        border: `1px solid ${props.theme.colors.borderOpaque}`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        fontSize: '12px',
+    }),
+    capRow: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
 })
+
+function DictionaryCapabilityBadges({
+    capabilities,
+    styles,
+    t,
+}: {
+    capabilities: DictionaryCapabilities
+    styles: Record<string, string>
+    t: (key: string) => string
+}) {
+    const langLabel = capabilities.languageScope === 'multilingual' ? t('Multilingual') : t('English Only')
+
+    return (
+        <div className={styles.capBadges}>
+            <span className={`${styles.capBadge} ${styles.capBadgeLang}`}>{langLabel}</span>
+            {capabilities.phonetic && (
+                <span className={`${styles.capBadge} ${styles.capBadgePositive}`}>{t('Phonetic')}</span>
+            )}
+            {capabilities.examples && (
+                <span className={`${styles.capBadge} ${styles.capBadgePositive}`}>{t('Examples')}</span>
+            )}
+        </div>
+    )
+}
 
 export interface IDictionaryManagerProps {
     enabled?: boolean
@@ -318,6 +390,13 @@ export function DictionaryManager({
                                                 {p.protocol}
                                                 {p.baseURL ? ` · ${p.baseURL}` : ''}
                                             </div>
+                                            <div style={{ marginTop: '3px' }}>
+                                                <DictionaryCapabilityBadges
+                                                    capabilities={getDictionaryCapabilities(p.protocol)}
+                                                    styles={styles}
+                                                    t={t}
+                                                />
+                                            </div>
                                         </div>
 
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -377,6 +456,29 @@ export function DictionaryManager({
                                 if (value[0]?.item) {
                                     handleAddPreset(value[0].item as DictionaryPreset)
                                 }
+                            }}
+                            getOptionLabel={({ option }) => {
+                                const item = (option as { item?: DictionaryPreset }).item
+                                return (
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            width: '100%',
+                                            gap: '8px',
+                                        }}
+                                    >
+                                        <span style={{ fontWeight: 500 }}>{String(option.label)}</span>
+                                        {item?.capabilities && (
+                                            <DictionaryCapabilityBadges
+                                                capabilities={item.capabilities}
+                                                styles={styles}
+                                                t={t}
+                                            />
+                                        )}
+                                    </div>
+                                )
                             }}
                         />
                     </div>
@@ -442,6 +544,49 @@ export function DictionaryManager({
                                 <div className={styles.caption}>
                                     {t('Determines the dictionary request format and service adapter.')}
                                 </div>
+                            </div>
+
+                            <div className={styles.field}>
+                                <div className={styles.label}>{t('Capabilities')}</div>
+                                {(() => {
+                                    const caps = getDictionaryCapabilities(selectedConfig.protocol)
+                                    return (
+                                        <div className={styles.capabilitiesBox}>
+                                            <div className={styles.capRow}>
+                                                <span style={{ color: theme.colors.contentSecondary }}>
+                                                    {t('Definitions Language')}
+                                                </span>
+                                                <span className={`${styles.capBadge} ${styles.capBadgeLang}`}>
+                                                    {caps.languageScope === 'multilingual'
+                                                        ? caps.languageScopeNote === 'chinese-foreign'
+                                                            ? t('Multilingual (Chinese-Foreign)')
+                                                            : t('Multilingual')
+                                                        : t('English Only')}
+                                                </span>
+                                            </div>
+                                            <div className={styles.capRow}>
+                                                <span style={{ color: theme.colors.contentSecondary }}>
+                                                    {t('Phonetic Symbols')}
+                                                </span>
+                                                <span
+                                                    className={`${styles.capBadge} ${caps.phonetic ? styles.capBadgePositive : styles.capBadgeNeutral}`}
+                                                >
+                                                    {caps.phonetic ? t('Supported') : t('Not Supported')}
+                                                </span>
+                                            </div>
+                                            <div className={styles.capRow}>
+                                                <span style={{ color: theme.colors.contentSecondary }}>
+                                                    {t('Example Sentences')}
+                                                </span>
+                                                <span
+                                                    className={`${styles.capBadge} ${caps.examples ? styles.capBadgePositive : styles.capBadgeNeutral}`}
+                                                >
+                                                    {caps.examples ? t('Supported') : t('Not Supported')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
                             </div>
 
                             {/* Base URL for endpoints that support custom endpoints */}
