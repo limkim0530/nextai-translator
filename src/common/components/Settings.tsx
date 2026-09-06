@@ -1438,7 +1438,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                 // it the last setting can never be scrolled clear of it.
                 paddingBottom: utils.isBrowserExtensionOptions() ? undefined : inPopupCard ? '52px' : '32px',
                 background: isDesktopApp ? 'transparent' : theme.colors.backgroundPrimary,
-                minWidth: isDesktopApp ? 450 : 400,
+                minWidth: isDesktopApp ? 450 : inPopupCard ? 500 : 400,
                 flex: inPopupCard ? '1 1 auto' : undefined,
                 minHeight: inPopupCard ? 0 : undefined,
                 overflowY: inPopupCard ? 'auto' : undefined,

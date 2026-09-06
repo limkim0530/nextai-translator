@@ -13,6 +13,8 @@ import {
     zIndex,
 } from './consts'
 import { createUseStyles } from 'react-jss'
+import { useAtomValue } from 'jotai'
+import { showSettingsAtom } from '../../common/store/setting'
 
 type Props = {
     reference: ReferenceElement
@@ -54,6 +56,7 @@ const useStyles = createUseStyles({
 
 export default function InnerContainer({ children, reference, compact }: Props) {
     const styles = useStyles()
+    const showSettings = useAtomValue(showSettingsAtom)
 
     const draggedRef = useRef(false)
     const draggableRef = useRef<HTMLDivElement | null>(null)
@@ -161,7 +164,14 @@ export default function InnerContainer({ children, reference, compact }: Props) 
             onStart={handleOnStart}
             onDrag={handleOnDrag}
         >
-            <div ref={draggableRef} className={styles.container} id={popupCardInnerContainerId}>
+            <div
+                ref={draggableRef}
+                className={styles.container}
+                id={popupCardInnerContainerId}
+                style={{
+                    width: showSettings ? '500px' : 'max-content',
+                }}
+            >
                 {children}
             </div>
         </Draggable>

@@ -2168,7 +2168,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                 // (see InnerContainer). Passing the cap down means shrinking with the
                 // card (`min-height: 0`) and handing the leftover height to the pane.
                 ...(isPopupCard && showSettings
-                    ? { display: 'flex', flexDirection: 'column', minHeight: 0 }
+                    ? { display: 'flex', flexDirection: 'column', minHeight: 0, width: '100%' }
                     : undefined),
             }}
         >
