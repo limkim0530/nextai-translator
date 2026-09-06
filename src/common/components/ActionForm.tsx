@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ICreateActionOption } from '../internal-services/action'
+import { ICreateActionOption, IUpdateActionOption } from '../internal-services/action'
 import { Action } from '../internal-services/db'
 import { createForm } from './Form'
 import { Input } from 'baseui/input'
@@ -13,6 +13,7 @@ import { useTheme } from '../hooks/useTheme'
 import { IconPicker } from './IconPicker'
 import { RenderingFormatSelector } from './RenderingFormatSelector'
 import { ProviderSelector } from './Settings'
+import { ActionModelSelector } from './ActionModelSelector'
 
 const useStyles = createUseStyles({
     placeholder: (props: IThemedStyleProps) => ({
@@ -40,7 +41,7 @@ export interface IActionFormProps {
     onSubmit: (action: Action) => void
 }
 
-const { Form, FormItem } = createForm<ICreateActionOption>()
+const { Form, FormItem, useForm } = createForm<ICreateActionOption>()
 
 export function ActionForm(props: IActionFormProps) {
     const { theme, themeType } = useTheme()
@@ -55,7 +56,13 @@ export function ActionForm(props: IActionFormProps) {
             setLoading(true)
             let action: Action
             if (props.action) {
-                action = await actionService.update(props.action, values)
+                const updateOpt: IUpdateActionOption = { ...values }
+                if (!values.providerId) {
+                    updateOpt.clearFields = ['providerId', 'apiModel']
+                    delete updateOpt.providerId
+                    delete updateOpt.apiModel
+                }
+                action = await actionService.update(props.action, updateOpt)
             } else {
                 action = await actionService.create(values)
             }
@@ -117,17 +124,28 @@ export function ActionForm(props: IActionFormProps) {
         </div>
     )
 
+    const [form] = useForm()
     const [values, setValues] = useState<ICreateActionOption | undefined>(props.action)
     useEffect(() => {
         setValues(props.action)
-    }, [props.action])
+        if (props.action) {
+            form.setFieldsValue(props.action)
+        }
+    }, [props.action, form])
 
-    const handleValuesChange = useCallback((_changes: Partial<ICreateActionOption>, values: ICreateActionOption) => {
-        setValues(values)
-    }, [])
+    const handleValuesChange = useCallback(
+        (changes: Partial<ICreateActionOption>, nextValues: ICreateActionOption) => {
+            if (changes.providerId !== undefined && changes.providerId !== values?.providerId) {
+                form.setFieldsValue({ apiModel: '' })
+                nextValues = { ...nextValues, apiModel: '' }
+            }
+            setValues(nextValues)
+        },
+        [form, values?.providerId]
+    )
 
     return (
-        <Form initialValues={values} onValuesChange={handleValuesChange} onFinish={onSubmit}>
+        <Form form={form} initialValues={values} onValuesChange={handleValuesChange} onFinish={onSubmit}>
             {!props.action?.mode && (
                 <>
                     <FormItem required name='name' label={t('Name')}>
@@ -174,7 +192,7 @@ export function ActionForm(props: IActionFormProps) {
             </FormItem>
             {values?.providerId && (
                 <FormItem name='apiModel' label={`${t('Action Model')} (Optional)`}>
-                    <Input size='compact' placeholder={t('Leave empty to use the provider default') ?? ''} />
+                    <ActionModelSelector providerId={values.providerId} />
                 </FormItem>
             )}
             <div

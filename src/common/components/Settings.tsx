@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import _ from 'underscore'
 import { Tabs, Tab, StyledTabList, StyledTabPanel } from 'baseui/tabs-motion'
 import icon from '../assets/images/icon-large.png'
@@ -34,7 +34,6 @@ import { useThemeType } from '../hooks/useThemeType'
 import { Slider } from 'baseui/slider'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { actionService } from '../services/action'
-import { Action } from '../internal-services/db'
 import { GlobalSuspense } from './GlobalSuspense'
 
 import { ProviderManager } from './ProviderManager'
@@ -54,6 +53,8 @@ import { Textarea } from 'baseui/textarea'
 import { ProxyTester } from './ProxyTester'
 import { isMacOS } from '../utils'
 import NumberInput from './NumberInput'
+import { GiPlatform } from 'react-icons/gi'
+import { ActionManager } from './ActionManager'
 
 const langOptions: Value = supportedLanguages.reduce((acc, [id, label]) => {
     return [
@@ -1116,188 +1117,6 @@ export function Settings({ engine, ...props }: ISettingsProps) {
     )
 }
 
-interface IPerActionModelConfigProps {
-    settings: ISettings
-}
-
-// Persist selected action across Settings open/close cycles
-let lastSelectedActionId: number | undefined
-
-/**
- * Lets one action opt out of the default provider.
- *
- * Only a provider and an optional model live here now. Thinking depth is a
- * property of a provider instance, so an action that wants different reasoning
- * points at a second instance instead of carrying its own duplicate knobs.
- */
-function PerActionModelConfig({ settings }: IPerActionModelConfigProps) {
-    const { t } = useTranslation()
-    const { theme } = useTheme()
-    const actions = useLiveQuery(() => actionService.list(), [])
-    const [selectedActionId, setSelectedActionId] = useState<number | undefined>(lastSelectedActionId)
-    const [selectedAction, setSelectedAction] = useState<Action | undefined>(undefined)
-    const [useCustomModel, setUseCustomModel] = useState(false)
-    const [actionProviderId, setActionProviderId] = useState<string | undefined>(undefined)
-    const [actionModel, setActionModel] = useState<string | undefined>(undefined)
-
-    useEffect(() => {
-        if (actions && actions.length > 0 && selectedActionId === undefined) {
-            setSelectedActionId(actions[0].id)
-        }
-    }, [actions, selectedActionId])
-
-    useEffect(() => {
-        lastSelectedActionId = selectedActionId
-    }, [selectedActionId])
-
-    useEffect(() => {
-        if (!actions || selectedActionId === undefined) return
-        const action = actions.find((a) => a.id === selectedActionId)
-        setSelectedAction(action)
-        if (action) {
-            setUseCustomModel(!!(action.providerId || action.apiModel))
-            setActionProviderId(action.providerId || settings.defaultProviderId)
-            setActionModel(action.apiModel || '')
-        }
-    }, [actions, selectedActionId, settings.defaultProviderId])
-
-    const handleSave = useCallback(
-        async (providerId?: string, model?: string, enabled?: boolean) => {
-            if (!selectedAction) return
-            const shouldEnable = enabled !== undefined ? enabled : useCustomModel
-            if (shouldEnable) {
-                await actionService.update(selectedAction, {
-                    providerId: providerId ?? actionProviderId,
-                    apiModel: model ?? actionModel,
-                })
-            } else {
-                await actionService.update(selectedAction, {
-                    clearFields: ['providerId', 'apiModel'],
-                })
-            }
-        },
-        [selectedAction, useCustomModel, actionProviderId, actionModel]
-    )
-
-    const actionOptions = useMemo(() => {
-        if (!actions) return []
-        return actions.map((action) => ({
-            id: action.id,
-            label: action.mode ? t(action.name) : action.name,
-        }))
-    }, [actions, t])
-
-    return (
-        <div
-            style={{
-                border: `1px solid ${theme.colors.borderOpaque}`,
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '16px',
-            }}
-        >
-            <div
-                style={{
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    marginBottom: '12px',
-                    color: theme.colors.contentPrimary,
-                }}
-            >
-                {t('Per-Action Model')}
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-                <div
-                    style={{
-                        fontSize: '12px',
-                        marginBottom: '4px',
-                        color: theme.colors.contentSecondary,
-                    }}
-                >
-                    {t('Select an action to configure its model')}
-                </div>
-                <Select
-                    size='compact'
-                    searchable={false}
-                    clearable={false}
-                    value={selectedActionId !== undefined ? [{ id: selectedActionId }] : []}
-                    onChange={(params) => {
-                        setSelectedActionId(params.value[0]?.id as number)
-                    }}
-                    options={actionOptions}
-                />
-            </div>
-            {selectedAction && (
-                <>
-                    <div style={{ marginBottom: '12px' }}>
-                        <Checkbox
-                            checked={useCustomModel}
-                            onChange={(e) => {
-                                const checked = (e.target as HTMLInputElement).checked
-                                setUseCustomModel(checked)
-                                handleSave(actionProviderId, actionModel, checked)
-                            }}
-                        >
-                            <span style={{ fontSize: '13px' }}>{t('Use custom model for this action')}</span>
-                        </Checkbox>
-                    </div>
-                    {useCustomModel ? (
-                        <>
-                            <div style={{ marginBottom: '8px' }}>
-                                <div
-                                    style={{
-                                        fontSize: '12px',
-                                        marginBottom: '4px',
-                                        color: theme.colors.contentSecondary,
-                                    }}
-                                >
-                                    {t('Action Provider')}
-                                </div>
-                                <ProviderSelector
-                                    value={actionProviderId}
-                                    onChange={(providerId) => {
-                                        setActionProviderId(providerId)
-                                        setActionModel('')
-                                        handleSave(providerId, '', true)
-                                    }}
-                                />
-                            </div>
-                            <div style={{ marginBottom: '8px' }}>
-                                <div
-                                    style={{
-                                        fontSize: '12px',
-                                        marginBottom: '4px',
-                                        color: theme.colors.contentSecondary,
-                                    }}
-                                >
-                                    {t('Action Model')}
-                                </div>
-                                <Input
-                                    size='compact'
-                                    placeholder={t('Leave empty to use the provider default') ?? ''}
-                                    value={actionModel || ''}
-                                    onChange={(e) => setActionModel((e.target as HTMLInputElement).value)}
-                                    onBlur={() => handleSave(actionProviderId, actionModel, true)}
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        <div
-                            style={{
-                                fontSize: '12px',
-                                color: theme.colors.contentTertiary,
-                                fontStyle: 'italic',
-                            }}
-                        >
-                            {t('Using the default provider')}
-                        </div>
-                    )}
-                </>
-            )}
-        </div>
-    )
-}
-
 export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProps) {
     const isTauri = utils.isTauri()
     const trackTauriEvent = useCallback(
@@ -1696,6 +1515,14 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         }}
                         overrides={tabOverrides}
                     />
+                    <Tab
+                        title={t('Actions')}
+                        key='actions'
+                        artwork={() => {
+                            return <GiPlatform size={16} />
+                        }}
+                        overrides={tabOverrides}
+                    />
                     {isTauri && (
                         <Tab
                             title={t('Proxy')}
@@ -1787,7 +1614,6 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         <FormItem name='defaultTranslateMode' label={t('Default Action')}>
                             <TranslateModeSelector onBlur={onBlur} />
                         </FormItem>
-                        <PerActionModelConfig settings={values} />
                         <FormItem name='defaultTargetLanguage' label={t('Default target language')}>
                             <LanguageSelector onBlur={onBlur} />
                         </FormItem>
@@ -1911,6 +1737,13 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                     </div>
                     <div
                         style={{
+                            display: activeTab === 'actions' ? 'block' : 'none',
+                        }}
+                    >
+                        <ActionManager embedded />
+                    </div>
+                    <div
+                        style={{
                             display: isTauri && activeTab === 'proxy' ? 'block' : 'none',
                         }}
                     >
@@ -2029,7 +1862,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         bottom: '7px',
                         right: '25px',
                         paddingBottom: utils.isBrowserExtensionOptions() ? '10px' : undefined,
-                        display: 'flex',
+                        display: activeTab === 'actions' ? 'none' : 'flex',
                         alignItems: 'center',
                         flexDirection: 'row',
                         zIndex: 1000,

@@ -10,6 +10,7 @@ import { format } from 'date-fns'
 import { Button } from 'baseui/button'
 import { List, arrayMove } from 'baseui/dnd-list'
 import { RiDeleteBinLine } from 'react-icons/ri'
+import { IoMdAdd } from 'react-icons/io'
 import { createElement, useCallback, useReducer, useState } from 'react'
 import * as mdIcons from 'react-icons/md'
 import { Action } from '../internal-services/db'
@@ -22,35 +23,45 @@ import { useSettings } from '../hooks/useSettings'
 import { getProviderLabel } from '../providers'
 import { emit } from '@tauri-apps/api/event'
 
+interface IActionManagerStyleProps extends IThemedStyleProps {
+    embedded?: boolean
+}
+
 const useStyles = createUseStyles({
-    root: () => ({
+    root: (props: IActionManagerStyleProps) => ({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: isDesktopApp() ? '40px 20px 20px 20px' : 0,
+        padding: props.embedded ? 0 : isDesktopApp() ? '40px 20px 20px 20px' : 0,
         boxSizing: 'border-box',
-        width: isDesktopApp() ? '100%' : '600px',
+        width: props.embedded ? '100%' : isDesktopApp() ? '100%' : '600px',
     }),
-    header: (props: IThemedStyleProps) => ({
+    header: (props: IActionManagerStyleProps) => ({
         width: '100%',
         color: props.theme.colors.contentPrimary,
-        padding: isDesktopApp() ? '40px 24px 20px 24px' : 20,
+        padding: props.embedded ? '0 0 16px 0' : isDesktopApp() ? '40px 24px 20px 24px' : 20,
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        position: isDesktopApp() ? 'fixed' : 'block',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        position: props.embedded ? 'static' : isDesktopApp() ? 'fixed' : 'block',
+        backdropFilter: props.embedded ? 'none' : 'blur(20px)',
+        WebkitBackdropFilter: props.embedded ? 'none' : 'blur(20px)',
         zIndex: 1,
         left: 0,
         top: 0,
-        background: props.themeType === 'dark' ? 'rgba(31, 31, 31, 0.65)' : 'rgba(255, 255, 255, 0.65)',
+        background: props.embedded
+            ? 'transparent'
+            : props.themeType === 'dark'
+              ? 'rgba(31, 31, 31, 0.65)'
+              : 'rgba(255, 255, 255, 0.65)',
         flexFlow: 'row nowrap',
-        cursor: 'move',
-        borderBottom: `1px solid ${props.themeType === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+        cursor: props.embedded ? 'default' : 'move',
+        borderBottom: props.embedded
+            ? `1px solid ${props.theme.colors.borderOpaque}`
+            : `1px solid ${props.themeType === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
         transition: 'background 0.3s ease',
     }),
     iconContainer: {
@@ -83,8 +94,8 @@ const useStyles = createUseStyles({
         alignItems: 'center',
         gap: 10,
     },
-    actionList: () => ({
-        paddingTop: isDesktopApp() ? 70 : 0,
+    actionList: (props: IActionManagerStyleProps) => ({
+        paddingTop: props.embedded ? 12 : isDesktopApp() ? 70 : 0,
         width: '100%',
     }),
     actionItem: () => ({
@@ -148,13 +159,14 @@ const useStyles = createUseStyles({
 
 export interface IActionManagerProps {
     draggable?: boolean
+    embedded?: boolean
 }
 
-export function ActionManager({ draggable = true }: IActionManagerProps) {
+export function ActionManager({ draggable = true, embedded = false }: IActionManagerProps) {
     const [refreshActionsFlag, changeRefreshActionsFlag] = useReducer((x: number) => x + 1, 0)
     const { t } = useTranslation()
     const { theme, themeType } = useTheme()
-    const styles = useStyles({ theme, themeType })
+    const styles = useStyles({ theme, themeType, isDesktopApp: isDesktopApp(), embedded })
     const actions = useLiveQuery(() => actionService.list(), [refreshActionsFlag])
     const [showActionForm, setShowActionForm] = useState(false)
     const [updatingAction, setUpdatingAction] = useState<Action>()
@@ -173,19 +185,21 @@ export function ActionManager({ draggable = true }: IActionManagerProps) {
         <div
             className={styles.root}
             style={{
-                width: !draggable ? '800px' : undefined,
+                width: embedded ? '100%' : !draggable ? '800px' : undefined,
             }}
         >
             <div
                 className={styles.header}
-                data-tauri-drag-region
+                data-tauri-drag-region={!embedded ? '' : undefined}
                 style={{
-                    backgroundColor: settings.enableBackgroundBlur ? 'transparent' : undefined,
+                    backgroundColor: settings.enableBackgroundBlur && !embedded ? 'transparent' : undefined,
                 }}
             >
                 <div className={styles.iconContainer}>
-                    <img data-tauri-drag-region className={styles.icon} src={icon} />
-                    <div className={styles.iconText}>{t('Action Manager')}</div>
+                    {!embedded && <img data-tauri-drag-region className={styles.icon} src={icon} alt='icon' />}
+                    <div className={styles.iconText}>
+                        {embedded ? `${t('All Actions')} (${actions?.length ?? 0})` : t('Action Manager')}
+                    </div>
                 </div>
                 <div
                     style={{
@@ -194,7 +208,9 @@ export function ActionManager({ draggable = true }: IActionManagerProps) {
                 />
                 <div className={styles.operationList}>
                     <Button
+                        type='button'
                         size='mini'
+                        startEnhancer={<IoMdAdd size={14} />}
                         onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
@@ -283,6 +299,7 @@ export function ActionManager({ draggable = true }: IActionManagerProps) {
                                 {!draggable && (
                                     <>
                                         <Button
+                                            type='button'
                                             size='mini'
                                             disabled={idx === 0}
                                             onClick={async (e) => {
@@ -303,6 +320,7 @@ export function ActionManager({ draggable = true }: IActionManagerProps) {
                                             <MdArrowUpward size={12} />
                                         </Button>
                                         <Button
+                                            type='button'
                                             size='mini'
                                             disabled={idx === actions.length - 1}
                                             onClick={async (e) => {
@@ -325,6 +343,7 @@ export function ActionManager({ draggable = true }: IActionManagerProps) {
                                     </>
                                 )}
                                 <Button
+                                    type='button'
                                     size='mini'
                                     startEnhancer={<FiEdit size={12} />}
                                     onClick={(e) => {
@@ -337,6 +356,7 @@ export function ActionManager({ draggable = true }: IActionManagerProps) {
                                     {t('Update')}
                                 </Button>
                                 <Button
+                                    type='button'
                                     size='mini'
                                     startEnhancer={<RiDeleteBinLine size={12} />}
                                     disabled={!!action.mode}
