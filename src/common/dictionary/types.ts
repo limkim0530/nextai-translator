@@ -23,6 +23,7 @@ export interface DictionaryProviderConfig {
     baseURL?: string
     apiKey?: string
     apiSecret?: string
+    region?: string
     providerId?: string
     headers?: Record<string, string>
     enabled?: boolean
