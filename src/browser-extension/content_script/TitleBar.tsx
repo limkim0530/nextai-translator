@@ -7,6 +7,8 @@ import { RxCross2, RxDrawingPin, RxDrawingPinFilled } from 'react-icons/rx'
 import LogoWithText from '../../common/components/LogoWithText'
 import { setSettings } from '../../common/utils'
 import { Tooltip } from '../../common/components/Tooltip'
+import { useAtomValue } from 'jotai'
+import { showSettingsAtom } from '../../common/store/setting'
 
 const useStyles = createUseStyles({
     container: ({ theme }: IThemedStyleProps) => ({
@@ -55,6 +57,7 @@ type TitleBarProps = {
 export default function TitleBar({ pinned = false, onClose }: TitleBarProps) {
     const { theme, themeType } = useTheme()
     const { t } = useTranslation()
+    const showSettings = useAtomValue(showSettingsAtom)
 
     const styles = useStyles({ theme, themeType })
     const [isPinned, setIsPinned] = useState(pinned)
@@ -64,6 +67,10 @@ export default function TitleBar({ pinned = false, onClose }: TitleBarProps) {
             setSettings({ pinned: !prevIsPinned })
             return !prevIsPinned
         })
+    }
+
+    if (showSettings) {
+        return null
     }
 
     return (

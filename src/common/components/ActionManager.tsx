@@ -17,7 +17,7 @@ import { Action } from '../internal-services/db'
 import { Modal, ModalBody, ModalButton, ModalFooter, ModalHeader } from 'baseui/modal'
 import { ActionForm } from './ActionForm'
 import { IconType } from 'react-icons'
-import { isDesktopApp } from '../utils'
+import { isDesktopApp, getAssetUrl } from '../utils'
 import { MdArrowDownward, MdArrowUpward } from 'react-icons/md'
 import { useSettings } from '../hooks/useSettings'
 import { getProviderLabel } from '../providers'
@@ -196,7 +196,9 @@ export function ActionManager({ draggable = true, embedded = false }: IActionMan
                 }}
             >
                 <div className={styles.iconContainer}>
-                    {!embedded && <img data-tauri-drag-region className={styles.icon} src={icon} alt='icon' />}
+                    {!embedded && (
+                        <img data-tauri-drag-region className={styles.icon} src={getAssetUrl(icon)} alt='icon' />
+                    )}
                     <div className={styles.iconText}>
                         {embedded ? `${t('All Actions')} (${actions?.length ?? 0})` : t('Action Manager')}
                     </div>

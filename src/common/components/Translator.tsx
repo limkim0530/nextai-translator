@@ -199,7 +199,7 @@ const useStyles = createUseStyles({
                   'display': 'flex',
                   'flexDirection': 'row',
                   'flexFlow': 'row nowrap',
-                  'cursor': 'move',
+                  'cursor': 'default',
                   'alignItems': 'center',
                   'borderBottom': `1px solid ${
                       props.themeType === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
@@ -212,7 +212,7 @@ const useStyles = createUseStyles({
             : {
                   'display': 'flex',
                   'flexDirection': 'row',
-                  'cursor': 'move',
+                  'cursor': 'default',
                   'alignItems': 'center',
                   'padding': '10px 16px',
                   'borderBottom': `1px solid ${
@@ -2190,7 +2190,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                         className={styles.popupCardHeaderContainer}
                         data-tauri-drag-region
                         style={{
-                            cursor: isDesktopApp() ? 'default' : showLogo ? 'move' : 'default',
+                            cursor: 'default',
                             boxShadow: isDesktopApp() && !isScrolledToTop ? theme.lighting.shadow600 : undefined,
                             background: settings.enableBackgroundBlur ? 'transparent' : '',
                         }}

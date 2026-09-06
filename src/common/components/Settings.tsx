@@ -1503,7 +1503,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
             style={{
                 width: '100%',
                 boxSizing: 'border-box',
-                paddingTop: utils.isBrowserExtensionOptions() ? undefined : '136px',
+                paddingTop: isDesktopApp ? '136px' : undefined,
                 // The translator's 42px footer floats over the pane; without room for
                 // it the last setting can never be scrolled clear of it.
                 paddingBottom: utils.isBrowserExtensionOptions() ? undefined : inPopupCard ? '52px' : '32px',
@@ -1518,7 +1518,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
         >
             <nav
                 style={{
-                    position: utils.isBrowserExtensionOptions() ? 'sticky' : 'fixed',
+                    position: isDesktopApp ? 'fixed' : 'sticky',
                     left: 0,
                     top: 0,
                     zIndex: 999,
@@ -1528,6 +1528,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                     background: `url(${utils.getAssetUrl(beams)}) no-repeat center center`,
                     boxSizing: 'border-box',
                     boxShadow: isScrolled ? theme.lighting.shadow600 : undefined,
+                    cursor: inPopupCard ? 'move' : undefined,
                 }}
                 data-tauri-drag-region
             >
@@ -1539,15 +1540,30 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         color: '#333',
                         gap: 10,
                         padding: '15px 25px 0 25px',
+                        cursor: inPopupCard ? 'move' : undefined,
+                        userSelect: 'none',
                     }}
+                    data-tauri-drag-region
                 >
-                    <img width='22' src={utils.getAssetUrl(icon)} alt='logo' />
+                    <img
+                        width='22'
+                        src={utils.getAssetUrl(icon)}
+                        alt='logo'
+                        data-tauri-drag-region
+                        style={{
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                        }}
+                    />
                     <h2
+                        data-tauri-drag-region
                         style={{
                             display: 'flex',
                             flexDirection: 'row',
                             alignItems: 'center',
                             gap: 6,
+                            cursor: inPopupCard ? 'move' : undefined,
+                            userSelect: 'none',
                         }}
                     >
                         NextAI Translator
@@ -1563,8 +1579,11 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         ) : null}
                     </h2>
                     <div
+                        data-tauri-drag-region
                         style={{
                             flexGrow: 1,
+                            cursor: inPopupCard ? 'move' : undefined,
+                            alignSelf: 'stretch',
                         }}
                     />
                 </div>
