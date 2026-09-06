@@ -10,6 +10,8 @@ import { create } from 'jss'
 import preset from 'jss-preset-default'
 import { JssProvider, createGenerateId } from 'react-jss'
 import { Client as Styletron } from 'styletron-engine-atomic'
+import { Provider as StyletronProvider } from 'styletron-react'
+import { BaseProvider } from 'baseui'
 import { createRoot, Root } from 'react-dom/client'
 import hotkeys from 'hotkeys-js'
 import '@/common/i18n.js'
@@ -21,6 +23,7 @@ import InnerContainer from './InnerContainer'
 import TitleBar from './TitleBar'
 import { addShadowStyleTarget } from './shadow-styles'
 import { setExternalOriginalText } from '@/common/store'
+import { useTheme } from '@/common/hooks/useTheme'
 
 let root: Root | null = null
 const generateId = createGenerateId()
@@ -73,6 +76,62 @@ async function createPopupCard() {
     return $popupCard
 }
 
+interface PopupCardAppProps {
+    engine: Styletron
+    jss: ReturnType<typeof create>
+    reference: ReferenceElement
+    isCompact: boolean
+    text: string
+    pinned?: boolean
+    autoFocus?: boolean
+    isUserscript: boolean
+    onClose: () => void
+}
+
+function PopupCardApp({
+    engine,
+    jss,
+    reference,
+    isCompact,
+    text,
+    pinned,
+    autoFocus,
+    isUserscript,
+    onClose,
+}: PopupCardAppProps) {
+    const { theme } = useTheme()
+
+    return (
+        <React.StrictMode>
+            <GlobalSuspense>
+                <JssProvider jss={jss} generateId={generateId} classNamePrefix='__yetone-nextai-translator-jss-'>
+                    <StyletronProvider value={engine}>
+                        <BaseProvider theme={theme} zIndex={parseInt(zIndex, 10)}>
+                            <InnerContainer reference={reference} compact={isCompact}>
+                                {isCompact ? (
+                                    <InlineLookupContainer text={text} onClose={onClose} />
+                                ) : (
+                                    <>
+                                        <TitleBar pinned={pinned} onClose={onClose} />
+                                        <Translator
+                                            engine={engine}
+                                            autoFocus={autoFocus}
+                                            showSettingsIcon
+                                            defaultShowSettings={isUserscript}
+                                            showLogo={false}
+                                            openSource='content-script'
+                                        />
+                                    </>
+                                )}
+                            </InnerContainer>
+                        </BaseProvider>
+                    </StyletronProvider>
+                </JssProvider>
+            </GlobalSuspense>
+        </React.StrictMode>
+    )
+}
+
 async function showPopupCard(reference: ReferenceElement, text: string, autoFocus: boolean | undefined = false) {
     const $popupThumb: HTMLDivElement | null = await queryPopupThumbElement()
     if ($popupThumb) {
@@ -99,33 +158,20 @@ async function showPopupCard(reference: ReferenceElement, text: string, autoFocu
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(window as any).__IS_OT_BROWSER_EXTENSION_CONTENT_SCRIPT__ = true
     const isUserscript = utils.isUserscript()
-    const JSS = JssProvider
     root = createRoot($popupCard)
     const isCompact = settings.useCompactLookup ?? false
     root.render(
-        <React.StrictMode>
-            <GlobalSuspense>
-                <JSS jss={jss} generateId={generateId} classNamePrefix='__yetone-nextai-translator-jss-'>
-                    <InnerContainer reference={reference} compact={isCompact}>
-                        {isCompact ? (
-                            <InlineLookupContainer text={text} onClose={hidePopupCard} />
-                        ) : (
-                            <>
-                                <TitleBar pinned={settings.pinned} onClose={hidePopupCard} engine={engine} />
-                                <Translator
-                                    engine={engine}
-                                    autoFocus={autoFocus}
-                                    showSettingsIcon
-                                    defaultShowSettings={isUserscript}
-                                    showLogo={false}
-                                    openSource='content-script'
-                                />
-                            </>
-                        )}
-                    </InnerContainer>
-                </JSS>
-            </GlobalSuspense>
-        </React.StrictMode>
+        <PopupCardApp
+            engine={engine}
+            jss={jss}
+            reference={reference}
+            isCompact={isCompact}
+            text={text}
+            pinned={settings.pinned}
+            autoFocus={autoFocus}
+            isUserscript={isUserscript}
+            onClose={hidePopupCard}
+        />
     )
     if (!isCompact) {
         setExternalOriginalText(text)

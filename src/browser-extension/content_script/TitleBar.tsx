@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import { createUseStyles } from 'react-jss'
 import { useTranslation } from 'react-i18next'
-import { BaseProvider } from 'baseui'
-import { Provider as StyletronProvider } from 'styletron-react'
-import { Client as Styletron } from 'styletron-engine-atomic'
 import { IThemedStyleProps } from '../../common/types'
 import { useTheme } from '../../common/hooks/useTheme'
 import { RxCross2, RxDrawingPin, RxDrawingPinFilled } from 'react-icons/rx'
@@ -52,11 +49,10 @@ const useStyles = createUseStyles({
 
 type TitleBarProps = {
     pinned?: boolean
-    engine: Styletron
     onClose: () => void
 }
 
-export default function TitleBar({ pinned = false, onClose, engine }: TitleBarProps) {
+export default function TitleBar({ pinned = false, onClose }: TitleBarProps) {
     const { theme, themeType } = useTheme()
     const { t } = useTranslation()
 
@@ -71,36 +67,28 @@ export default function TitleBar({ pinned = false, onClose, engine }: TitleBarPr
     }
 
     return (
-        <StyletronProvider value={engine}>
-            <BaseProvider theme={theme}>
-                <div data-tauri-drag-region className={styles.container}>
-                    <LogoWithText />
-                    <div className={styles.actionsContainer}>
-                        <Tooltip content={isPinned ? t('Unpin') : t('Pin')} placement='bottom' onMouseEnterDelay={1000}>
-                            <div
-                                className={styles.actionIconContainer}
-                                onClick={handleTogglePin}
-                                data-testid='titlebar-pin-btn'
-                            >
-                                {isPinned ? (
-                                    <RxDrawingPinFilled size={13} className={styles.pinIcon} />
-                                ) : (
-                                    <RxDrawingPin size={13} className={styles.pinIcon} />
-                                )}
-                            </div>
-                        </Tooltip>
-                        <Tooltip content={t('Close')} placement='bottom' onMouseEnterDelay={1000}>
-                            <div
-                                className={styles.actionIconContainer}
-                                onClick={onClose}
-                                data-testid='titlebar-close-btn'
-                            >
-                                <RxCross2 size={16} />
-                            </div>
-                        </Tooltip>
+        <div data-tauri-drag-region className={styles.container}>
+            <LogoWithText />
+            <div className={styles.actionsContainer}>
+                <Tooltip content={isPinned ? t('Unpin') : t('Pin')} placement='bottom' onMouseEnterDelay={1000}>
+                    <div
+                        className={styles.actionIconContainer}
+                        onClick={handleTogglePin}
+                        data-testid='titlebar-pin-btn'
+                    >
+                        {isPinned ? (
+                            <RxDrawingPinFilled size={13} className={styles.pinIcon} />
+                        ) : (
+                            <RxDrawingPin size={13} className={styles.pinIcon} />
+                        )}
                     </div>
-                </div>
-            </BaseProvider>
-        </StyletronProvider>
+                </Tooltip>
+                <Tooltip content={t('Close')} placement='bottom' onMouseEnterDelay={1000}>
+                    <div className={styles.actionIconContainer} onClick={onClose} data-testid='titlebar-close-btn'>
+                        <RxCross2 size={16} />
+                    </div>
+                </Tooltip>
+            </div>
+        </div>
     )
 }

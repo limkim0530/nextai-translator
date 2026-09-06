@@ -26,6 +26,8 @@ function click(target: EventTarget) {
     // `composed` is what lets the event cross the shadow boundary at all — the
     // same flag real user clicks carry.
     act(() => {
+        target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }))
+        target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, composed: true, button: 0 }))
         target.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, button: 0 }))
     })
 }
@@ -53,7 +55,7 @@ beforeEach(() => {
     act(() => {
         root.render(
             <StyletronProvider value={new Styletron()}>
-                <BaseProvider theme={LightTheme}>
+                <BaseProvider theme={LightTheme} overrides={{ AppContainer: { style: { display: 'contents' } } }}>
                     <Select
                         options={[
                             { id: 'en', label: 'English' },
@@ -93,13 +95,105 @@ describe('baseui Select inside a shadow root', () => {
         expect(options().length).toBe(2)
     })
 
-    it('still closes the menu when the click lands outside the shadow root', async () => {
-        click(shadow.querySelector('input')!)
+    it('opens when clicking the select control (not the input)', async () => {
+        const control = shadow.querySelector('[data-baseweb="select"] > div')
+        expect(control).toBeTruthy()
+
+        click(control!)
         await flushTimers()
         expect(options().length).toBe(2)
+    })
 
-        click(document.body)
+    it('opens when clicking a non-searchable select', async () => {
+        const mount = document.createElement('div')
+        shadow.appendChild(mount)
+        const customRoot = createRoot(mount)
+        act(() => {
+            customRoot.render(
+                <StyletronProvider value={new Styletron()}>
+                    <BaseProvider theme={LightTheme}>
+                        <Select
+                            searchable={false}
+                            options={[
+                                { id: 'en', label: 'English' },
+                                { id: 'zh', label: 'Chinese' },
+                            ]}
+                            labelKey='label'
+                            valueKey='id'
+                            onChange={() => {}}
+                        />
+                    </BaseProvider>
+                </StyletronProvider>
+            )
+        })
 
-        expect(options().length).toBe(0)
+        const selects = shadow.querySelectorAll('[data-baseweb="select"]')
+        const nonSearchable = selects[selects.length - 1]
+        click(nonSearchable.querySelector('div')!)
+        await flushTimers()
+        expect(shadow.querySelectorAll('[role="option"]').length).toBe(2)
+
+        act(() => customRoot.unmount())
+    })
+
+    it('opens and renders dropdown correctly when BaseProvider wraps the card', async () => {
+        const mount = document.createElement('div')
+        shadow.appendChild(mount)
+        const customRoot = createRoot(mount)
+        act(() => {
+            customRoot.render(
+                <StyletronProvider value={new Styletron()}>
+                    <BaseProvider theme={LightTheme}>
+                        <div
+                            id='popup-card-inner-container'
+                            style={{
+                                position: 'fixed',
+                                top: '100px',
+                                left: '200px',
+                                width: '400px',
+                                height: '400px',
+                                overflow: 'hidden',
+                                display: 'flex',
+                                flexDirection: 'column',
+                            }}
+                        >
+                            <div style={{ height: '35px' }}>TitleBar</div>
+                            <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
+                                <Select
+                                    searchable={false}
+                                    options={[
+                                        { id: 'gpt-4o', label: 'GPT-4o' },
+                                        { id: 'claude-3', label: 'Claude 3' },
+                                    ]}
+                                    labelKey='label'
+                                    valueKey='id'
+                                    onChange={() => {}}
+                                />
+                            </div>
+                        </div>
+                    </BaseProvider>
+                </StyletronProvider>
+            )
+        })
+
+        const card = shadow.querySelector('#popup-card-inner-container')
+        expect(card).toBeTruthy()
+        const select = card!.querySelector('[data-baseweb="select"]')
+        expect(select).toBeTruthy()
+
+        click(select!.querySelector('div')!)
+        await flushTimers()
+
+        // The dropdown menu options are rendered!
+        const dropdownOptions = shadow.querySelectorAll('[role="option"]')
+        expect(dropdownOptions.length).toBe(2)
+
+        // AND verify where the dropdown is rendered in the DOM:
+        // It is rendered in LayersContainer, which is OUTSIDE the card!
+        const popper = shadow.querySelector('[data-baseweb="popover"]')
+        expect(popper).toBeTruthy()
+        expect(card!.contains(popper)).toBe(false) // Not clipped by card's overflow: hidden!
+
+        act(() => customRoot.unmount())
     })
 })

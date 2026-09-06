@@ -600,20 +600,21 @@ interface INavigationEntry {
 export function Translator(props: ITranslatorProps) {
     const { theme } = useTheme()
 
-    /**
-     * In the popup card the height cap lives on the card itself, and a cap only
-     * reaches a descendant through boxes that agree to shrink with it. These two
-     * wrappers exist purely to host providers and carry no styles of their own, so
-     * dropping their boxes lets the translator sit directly in the card's column —
-     * without it the settings pane is laid out at full height and silently clipped.
-     */
-    const passthrough = props.openSource === 'content-script' ? ({ display: 'contents' } as const) : undefined
+    if (props.openSource === 'content-script') {
+        return (
+            <ErrorBoundary FallbackComponent={ErrorFallback}>
+                <GlobalSuspense>
+                    <InnerTranslator {...props} />
+                </GlobalSuspense>
+            </ErrorBoundary>
+        )
+    }
 
     return (
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <div style={passthrough}>
+            <div>
                 <StyletronProvider value={props.engine}>
-                    <BaseProvider theme={theme} overrides={passthrough && { AppContainer: { style: passthrough } }}>
+                    <BaseProvider theme={theme}>
                         <GlobalSuspense>
                             <InnerTranslator {...props} />
                         </GlobalSuspense>
