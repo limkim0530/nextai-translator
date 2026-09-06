@@ -17,6 +17,7 @@ import type { IThemedStyleProps } from '../types'
 import {
     createProviderFromPreset,
     findPreset,
+    getPreset,
     getReasoningControl,
     isApiKeyRequired,
     PROVIDER_PRESETS,
@@ -459,14 +460,33 @@ export function ProviderManager({
         [providers, selected, onChange, defaultProviderId]
     )
 
+    const getDisplayName = useCallback(
+        (providerConfig?: ProviderConfig) => {
+            if (!providerConfig) return ''
+            if (!providerConfig.name) return ''
+            const preset = PROVIDER_PRESETS.find((p) => p.name === providerConfig.name)
+            if (preset) {
+                return t(preset.name)
+            }
+            if (providerConfig.name === 'New provider') {
+                return t('New provider')
+            }
+            return providerConfig.name
+        },
+        [t]
+    )
+
     const addProvider = useCallback(
         (presetId: string) => {
-            const created = createProviderFromPreset(presetId)
+            const preset = getPreset(presetId)
+            const created = createProviderFromPreset(presetId, {
+                name: preset ? t(preset.name) : undefined,
+            })
             const next = [...providers, created]
             onChange(next, defaultProviderId ?? created.id)
             setSelectedId(created.id)
         },
-        [providers, onChange, defaultProviderId, setSelectedId]
+        [providers, onChange, defaultProviderId, setSelectedId, t]
     )
 
     const removeProvider = useCallback(
@@ -572,8 +592,18 @@ export function ProviderManager({
                                     <span
                                         style={hasError ? { color: theme.colors.contentNegative ?? '#d44' } : undefined}
                                     >
-                                        {provider.name || t('Unnamed provider')}
+                                        {getDisplayName(provider) || t('Unnamed provider')}
                                     </span>
+                                    {provider.id === defaultProviderId && (
+                                        <Tag
+                                            closeable={false}
+                                            hierarchy={TAG_HIERARCHY.primary}
+                                            kind='accent'
+                                            size='small'
+                                        >
+                                            {t('Default')}
+                                        </Tag>
+                                    )}
                                     {hasError && <span className={styles.requiredStar}>*</span>}
                                 </div>
                                 <div className={styles.rowMeta}>
@@ -581,11 +611,7 @@ export function ProviderManager({
                                     {provider.model ? ` · ${provider.model}` : ` · ${t('no model')}`}
                                 </div>
                             </div>
-                            {provider.id === defaultProviderId ? (
-                                <Tag closeable={false} hierarchy={TAG_HIERARCHY.primary} kind='accent'>
-                                    {t('Default')}
-                                </Tag>
-                            ) : (
+                            {provider.id !== defaultProviderId && (
                                 <Button
                                     type='button'
                                     size='mini'
@@ -626,7 +652,7 @@ export function ProviderManager({
                         size='compact'
                         clearable={false}
                         placeholder={t('Choose a preset or a custom endpoint') ?? ''}
-                        options={PROVIDER_PRESETS.map((p) => ({ id: p.id, label: p.name }))}
+                        options={PROVIDER_PRESETS.map((p) => ({ id: p.id, label: t(p.name) }))}
                         value={[]}
                         onChange={(params) => {
                             const id = params.value[0]?.id
@@ -670,7 +696,7 @@ export function ProviderManager({
                         </div>
                         <Input
                             size='compact'
-                            value={selected.name}
+                            value={getDisplayName(selected)}
                             error={isFieldInvalid('name')}
                             onChange={(e) => update({ name: (e.target as HTMLInputElement).value })}
                             onBlur={() => markTouched('name')}

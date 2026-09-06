@@ -65,6 +65,7 @@ export function getManifest(browser: 'firefox' | 'chromium') {
             'https://*.google.com/',
             'https://models.dev/',
             'https://api.dictionaryapi.dev/',
+            'https://api.datamuse.com/',
         ],
 
         optional_host_permissions: ['http://*/*', 'https://*/*'],

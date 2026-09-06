@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { listen, Event, emit } from '@tauri-apps/api/event'
 import { parse as bestEffortJSONParse } from 'best-effort-json-parser'
 import { commands } from '@/tauri/bindings'
+import { DEFAULT_DICTIONARY_PROVIDERS } from './dictionary/presets'
 
 export const defaultAutoTranslate = false
 export const defaultTargetLanguage = 'zh-Hans'
@@ -50,6 +51,7 @@ const settingKeys: Record<keyof ISettings, number> = {
     uiFontSize: 1,
     iconSize: 1,
     useCompactLookup: 1,
+    dictionary: 1,
 }
 
 export async function getSettings(): Promise<ISettings> {
@@ -67,6 +69,26 @@ export async function getSettings(): Promise<ISettings> {
     }
     if (!settings.defaultProviderId) {
         settings.defaultProviderId = settings.providers[0]?.id
+    }
+    if (!settings.dictionary) {
+        settings.dictionary = {
+            enabled: true,
+            defaultProviderId: DEFAULT_DICTIONARY_PROVIDERS[0]?.id,
+            providers: DEFAULT_DICTIONARY_PROVIDERS,
+        }
+    } else {
+        if (settings.dictionary.enabled === undefined || settings.dictionary.enabled === null) {
+            settings.dictionary.enabled = true
+        }
+        if (!Array.isArray(settings.dictionary.providers) || settings.dictionary.providers.length === 0) {
+            settings.dictionary.providers = DEFAULT_DICTIONARY_PROVIDERS
+        }
+        if (
+            !settings.dictionary.defaultProviderId ||
+            !settings.dictionary.providers.some((p) => p.id === settings.dictionary?.defaultProviderId)
+        ) {
+            settings.dictionary.defaultProviderId = settings.dictionary.providers[0]?.id
+        }
     }
     if (settings.autoTranslate === undefined || settings.autoTranslate === null) {
         settings.autoTranslate = defaultAutoTranslate

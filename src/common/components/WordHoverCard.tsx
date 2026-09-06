@@ -274,7 +274,7 @@ export function WordHoverProvider({ children, enabled = true, onOpenDetails }: W
         const controller = new AbortController()
         setPreview(null)
         setStatus('loading')
-        lookupEnglishWord(activeWord.word, controller.signal)
+        lookupEnglishWord(activeWord.word, controller.signal, settings)
             .then((result) => {
                 setPreview(result)
                 setStatus(result ? 'ready' : 'empty')
@@ -285,7 +285,7 @@ export function WordHoverProvider({ children, enabled = true, onOpenDetails }: W
                 }
             })
         return () => controller.abort()
-    }, [activeWord])
+    }, [activeWord, settings])
 
     useLayoutEffect(() => {
         if (!activeWord || !cardRef.current) return
@@ -376,17 +376,23 @@ export function WordHoverProvider({ children, enabled = true, onOpenDetails }: W
                 {t('Open full definition')}
                 <RxArrowRight size={13} />
             </button>
-            {preview?.sourceUrl ? (
-                <a
-                    className={styles.sourceLink}
-                    href={preview.sourceUrl}
-                    target='_blank'
-                    rel='noreferrer'
-                    onClick={(event) => event.stopPropagation()}
-                >
-                    {t('Source: Wiktionary')}
-                    <RxExternalLink size={9} />
-                </a>
+            {preview?.sourceName || preview?.sourceUrl ? (
+                preview.sourceUrl ? (
+                    <a
+                        className={styles.sourceLink}
+                        href={preview.sourceUrl}
+                        target='_blank'
+                        rel='noreferrer'
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        {t('Source: {{name}}', { name: preview.sourceName || 'Dictionary' })}
+                        <RxExternalLink size={9} />
+                    </a>
+                ) : (
+                    <span className={styles.sourceLink}>
+                        {t('Source: {{name}}', { name: preview.sourceName || 'Dictionary' })}
+                    </span>
+                )
             ) : null}
         </div>
     ) : null

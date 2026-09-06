@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next'
 import AppConfig from '../../../package.json'
 import { useSettings } from '../hooks/useSettings'
 import { defaultTTSProvider, langCode2TTSLang, ttsLangTestTextMap } from '../tts'
-import { RiDeleteBin5Line, RiCloudLine } from 'react-icons/ri'
+import { RiDeleteBin5Line, RiCloudLine, RiBook2Line } from 'react-icons/ri'
 import { IoMdAdd } from 'react-icons/io'
 import { MdSave } from 'react-icons/md'
 import { TTSProvider } from '../tts/types'
@@ -37,7 +37,9 @@ import { actionService } from '../services/action'
 import { GlobalSuspense } from './GlobalSuspense'
 
 import { ProviderManager } from './ProviderManager'
+import { DictionaryManager } from './DictionaryManager'
 import { validateProviders, type ProviderConfig } from '../providers'
+import type { DictionaryProviderConfig } from '../dictionary/types'
 import { PiTextbox } from 'react-icons/pi'
 import { BsKeyboard } from 'react-icons/bs'
 import { Cell, Grid } from 'baseui/layout-grid'
@@ -1230,6 +1232,44 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
         [form]
     )
 
+    const handleDictionaryChange = useCallback(
+        (providers: DictionaryProviderConfig[], defaultProviderId?: string) => {
+            const nextDefault =
+                defaultProviderId && providers.some((p) => p.id === defaultProviderId)
+                    ? defaultProviderId
+                    : providers[0]?.id
+            setValues((prev) => {
+                const nextDict = {
+                    ...(prev.dictionary || {}),
+                    enabled: prev.dictionary?.enabled ?? true,
+                    providers,
+                    defaultProviderId: nextDefault,
+                }
+                form.setFieldsValue({ dictionary: nextDict })
+                void utils.setSettings({ dictionary: nextDict })
+                return { ...prev, dictionary: nextDict }
+            })
+        },
+        [form]
+    )
+
+    const handleDictionaryEnabledChange = useCallback(
+        (enabled: boolean) => {
+            setValues((prev) => {
+                const nextDict = {
+                    ...(prev.dictionary || {}),
+                    enabled,
+                    providers: prev.dictionary?.providers ?? [],
+                    defaultProviderId: prev.dictionary?.defaultProviderId,
+                }
+                form.setFieldsValue({ dictionary: nextDict })
+                void utils.setSettings({ dictionary: nextDict })
+                return { ...prev, dictionary: nextDict }
+            })
+        },
+        [form]
+    )
+
     const onSubmit = useCallback(
         async (submitted: ISettings) => {
             setLoading(true)
@@ -1523,6 +1563,14 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         }}
                         overrides={tabOverrides}
                     />
+                    <Tab
+                        title={t('Dictionary')}
+                        key='dictionary'
+                        artwork={() => {
+                            return <RiBook2Line size={16} />
+                        }}
+                        overrides={tabOverrides}
+                    />
                     {isTauri && (
                         <Tab
                             title={t('Proxy')}
@@ -1741,6 +1789,21 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                         }}
                     >
                         <ActionManager embedded />
+                    </div>
+                    <div
+                        style={{
+                            display: activeTab === 'dictionary' ? 'block' : 'none',
+                        }}
+                    >
+                        <DictionaryManager
+                            enabled={values.dictionary?.enabled ?? true}
+                            providers={values.dictionary?.providers ?? []}
+                            defaultProviderId={values.dictionary?.defaultProviderId}
+                            aiProviders={values.providers ?? []}
+                            targetLang={values.defaultTargetLanguage}
+                            onEnabledChange={handleDictionaryEnabledChange}
+                            onChange={handleDictionaryChange}
+                        />
                     </div>
                     <div
                         style={{

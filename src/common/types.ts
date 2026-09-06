@@ -3,6 +3,9 @@ import { TranslateMode } from './translate'
 import { TTSProvider } from './tts/types'
 import { ProviderConfig } from './providers/types'
 import { LangCode } from './lang'
+import type { DictionaryProviderConfig } from './dictionary/types'
+
+export type { DictionaryProviderConfig } from './dictionary/types'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface ISync {
@@ -116,4 +119,9 @@ export interface ISettings {
     uiFontSize: number
     iconSize: number
     useCompactLookup?: boolean
+    dictionary?: {
+        enabled?: boolean
+        defaultProviderId?: string
+        providers?: DictionaryProviderConfig[]
+    }
 }
