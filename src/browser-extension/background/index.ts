@@ -5,6 +5,7 @@ import { BackgroundFetchRequestMessage, BackgroundFetchResponseMessage } from '.
 import { vocabularyInternalService } from '../../common/internal-services/vocabulary'
 import { actionInternalService } from '../../common/internal-services/action'
 import { historyInternalService } from '../../common/internal-services/history'
+import { snapshotInternalService } from '../../common/internal-services/snapshot'
 
 browser.contextMenus?.create(
     {
@@ -139,6 +140,8 @@ browser.runtime.onMessage.addListener(async (request: any) => {
             return await callMethod(request, actionInternalService)
         case BackgroundEventNames.historyService:
             return await callMethod(request, historyInternalService)
+        case BackgroundEventNames.snapshotService:
+            return await callMethod(request, snapshotInternalService)
         case BackgroundEventNames.getItem:
             const resp = await browser.storage.local.get(request.key)
             return {

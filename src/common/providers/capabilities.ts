@@ -9,7 +9,7 @@
  * it, a model that shipped the day after a build would fall into the `unknown`
  * branch and lose its published effort ladder until the next release.
  */
-import { getLocalDB } from '../internal-services/db'
+import { snapshotService } from '../services/snapshot'
 import { getUniversalFetch } from '../universal-fetch'
 import {
     buildCapabilityTables,
@@ -54,7 +54,7 @@ async function getRuntimeSnapshot(): Promise<CapabilitySnapshot | null> {
         return runtimeSnapshot
     }
     try {
-        const row = await getLocalDB().snapshot.get(RUNTIME_SNAPSHOT_KEY)
+        const row = await snapshotService.get(RUNTIME_SNAPSHOT_KEY)
         runtimeSnapshot = row ? (JSON.parse(row.payload) as CapabilitySnapshot) : null
     } catch {
         // A corrupt or unreadable snapshot must never block translation; the
@@ -84,7 +84,7 @@ export async function refreshModelCapabilities(): Promise<{ models: number; fetc
     }
 
     const snapshot: CapabilitySnapshot = { fetchedAt: new Date().toISOString(), tables }
-    await getLocalDB().snapshot.put({
+    await snapshotService.put({
         key: RUNTIME_SNAPSHOT_KEY,
         payload: JSON.stringify(snapshot),
         updatedAt: Date.now(),
