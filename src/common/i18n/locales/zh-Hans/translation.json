@@ -323,7 +323,6 @@
     "Select AI Provider": "选择 AI 提供商",
     "Use default AI provider": "使用默认 AI 提供商",
     "Test word": "测试单词",
-    "Test": "测试",
     "Test failed: {{error}}": "测试失败：{{error}}",
     "No definition found": "未找到释义",
     "Determines the dictionary request format and service adapter.": "决定词典请求格式与服务适配协议。",
@@ -353,5 +352,19 @@
     "Example Sentences": "例句展示",
     "Supported": "支持",
     "Not Supported": "不支持",
-    "Multilingual (Chinese-Foreign)": "多语言（中外互译）"
+    "Multilingual (Chinese-Foreign)": "多语言（中外互译）",
+    "Supports {word} and {targetLang} placeholders, or appends query parameters": "支持 {word} 和 {targetLang} 占位符，或自动追加查询参数",
+    "Custom REST API": "自定义 REST API",
+    "Unpin": "取消固定",
+    "Pin": "固定",
+    "Lookup test failed": "查词测试失败",
+    "Search": "搜索",
+    "Quick Translator Hotkey": "快捷翻译快捷键",
+    "Open a non-activating panel that auto-detects the word or sentence you are reading.": "打开不抢占焦点的面板，自动识别正在阅读的单词或句子。",
+    "Remove from favorites": "取消收藏",
+    "Add to favorites": "添加到收藏",
+    "Restore": "恢复",
+    "Browse, search, and restore translation entries.": "浏览、搜索并恢复翻译历史记录。",
+    "Stop": "停止",
+    "Retry": "重试"
 }
