@@ -108,4 +108,57 @@ describe('popup card dragging', () => {
 
         expect(card().style.width).toBe(`${popupCardMaxWidth}px`)
     })
+
+    it('shifts upward if dragged card overflows viewport bottom on resize', () => {
+        let resizeCb: (() => void) | null = null
+        class CaptureResizeObserver {
+            constructor(cb: () => void) {
+                resizeCb = cb
+            }
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        }
+        vi.stubGlobal('ResizeObserver', CaptureResizeObserver)
+
+        act(() => {
+            root.render(
+                <InnerContainer reference={document.createElement('div')}>
+                    <div data-tauri-drag-region>title bar</div>
+                </InnerContainer>
+            )
+        })
+
+        const handle = shadow.querySelector('[data-tauri-drag-region]')
+        act(() => {
+            handle!.dispatchEvent(mouse('mousedown', 100, 100))
+        })
+        act(() => {
+            document.dispatchEvent(mouse('mousemove', 160, 200))
+        })
+        act(() => {
+            document.dispatchEvent(mouse('mouseup', 160, 200))
+        })
+
+        expect(card().style.transform).toBe('translate(60px,100px)')
+
+        const el = card()
+        vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+            bottom: window.innerHeight + 40,
+            top: 100,
+            left: 60,
+            right: 260,
+            width: 200,
+            height: window.innerHeight - 60,
+            x: 60,
+            y: 100,
+            toJSON: () => {},
+        })
+
+        act(() => {
+            resizeCb?.()
+        })
+
+        expect(card().style.transform).toBe('translate(60px,50px)')
+    })
 })

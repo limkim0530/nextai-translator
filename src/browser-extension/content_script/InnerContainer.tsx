@@ -7,7 +7,6 @@ import {
     popupCardInnerContainerId,
     popupCardMaxWidth,
     popupCardMinHeight,
-    popupCardMinHeightAfterTranslation,
     popupCardMinWidth,
     popupCardOffset,
     zIndex,
@@ -70,13 +69,21 @@ export default function InnerContainer({ children, reference, compact }: Props) 
         const { x, y } = await computePosition(reference, draggableRef.current, {
             placement: 'bottom',
             middleware: [
-                shift({ padding: documentPadding }),
                 offset(popupCardOffset),
-                flip(),
+                flip({
+                    padding: documentPadding,
+                    fallbackPlacements: ['top', 'bottom'],
+                }),
+                shift({
+                    padding: documentPadding,
+                    crossAxis: true,
+                }),
                 size({
+                    padding: documentPadding,
                     apply({ availableHeight, elements }) {
+                        const safeMaxHeight = Math.min(availableHeight, window.innerHeight - 2 * documentPadding)
                         Object.assign(elements.floating.style, {
-                            maxHeight: `${Math.max(popupCardMinHeightAfterTranslation, availableHeight)}px`,
+                            maxHeight: `${Math.floor(safeMaxHeight)}px`,
                             overflow: 'hidden',
                         })
                     },
@@ -115,8 +122,8 @@ export default function InnerContainer({ children, reference, compact }: Props) 
         setBounds({
             left: position.x - rect.left + documentPadding,
             top: position.y - rect.top + documentPadding,
-            right: position.x + window.innerWidth - rect.right - documentPadding,
-            bottom: position.y + window.innerHeight - rect.bottom - documentPadding,
+            right: position.x + Math.max(0, window.innerWidth - rect.right - documentPadding),
+            bottom: position.y + Math.max(0, window.innerHeight - rect.bottom - documentPadding),
         })
     }, [position])
 
@@ -131,7 +138,17 @@ export default function InnerContainer({ children, reference, compact }: Props) 
         }
         const resizeObserver = new ResizeObserver(() => {
             if (draggedRef.current) {
-                // do nothing if has been dragged
+                const node = draggableRef.current
+                if (node) {
+                    const rect = node.getBoundingClientRect()
+                    if (rect.bottom > window.innerHeight - documentPadding) {
+                        const overflowY = rect.bottom - (window.innerHeight - documentPadding)
+                        setPosition((prev) => ({
+                            ...prev,
+                            y: prev.y - overflowY,
+                        }))
+                    }
+                }
             } else {
                 updatePosition()
             }
@@ -141,6 +158,18 @@ export default function InnerContainer({ children, reference, compact }: Props) 
             resizeObserver.disconnect()
         }
     }, [reference, updatePosition])
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (!draggedRef.current) {
+                updatePosition()
+            }
+        }
+        window.addEventListener('resize', handleResize)
+        return () => {
+            window.removeEventListener('resize', handleResize)
+        }
+    }, [updatePosition])
 
     if (compact) {
         return (

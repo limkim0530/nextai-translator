@@ -22,7 +22,16 @@ import { clsx } from 'clsx'
 import { Button } from 'baseui/button'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '../components/ErrorFallback'
-import { exportToCsv, isDesktopApp, isTauri, getAssetUrl, isUserscript, setSettings, isMacOS } from '../utils'
+import {
+    exportToCsv,
+    isDesktopApp,
+    isTauri,
+    getAssetUrl,
+    isUserscript,
+    setSettings,
+    isMacOS,
+    getBrowser,
+} from '../utils'
 import { InnerSettings } from './Settings'
 import { containerID, popupCardInnerContainerId } from '../../browser-extension/content_script/consts'
 import Dropzone from 'react-dropzone'
@@ -1509,7 +1518,11 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                     // The first run has no providers at all, and the raw message
                     // gives the user nothing to act on.
                     setErrorMessage(t('Add a provider in settings before translating.'))
-                    setShowSettings(true)
+                    if (isPopupCard && !isUserscript()) {
+                        getBrowser().then((browser) => browser.runtime.sendMessage({ type: 'openOptionsPage' }))
+                    } else {
+                        setShowSettings(true)
+                    }
                 } else {
                     setErrorMessage((error as Error).toString())
                 }
@@ -3039,7 +3052,16 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                         backgroundColor: getFooterBackgroundColor(),
                     }}
                 >
-                    <Tooltip content={showSettings ? t('Go to Translator') : t('Go to Settings')} placement='right'>
+                    <Tooltip
+                        content={
+                            isPopupCard && !isUserscript()
+                                ? t('Open Settings in new tab')
+                                : showSettings
+                                  ? t('Go to Translator')
+                                  : t('Go to Settings')
+                        }
+                        placement='right'
+                    >
                         <Button
                             size='mini'
                             kind='tertiary'
@@ -3053,6 +3075,11 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                             onClick={async (e) => {
                                 e.stopPropagation()
                                 e.preventDefault()
+                                if (isPopupCard && !isUserscript()) {
+                                    const browser = await getBrowser()
+                                    await browser.runtime.sendMessage({ type: 'openOptionsPage' })
+                                    return
+                                }
                                 setShowSettings((s: boolean) => !s)
                             }}
                         >
@@ -3066,7 +3093,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                     fontSize: '11px',
                                 }}
                             >
-                                {showSettings ? (
+                                {showSettings && (!isPopupCard || isUserscript()) ? (
                                     <TiArrowBack size={15} />
                                 ) : (
                                     <div
@@ -3082,7 +3109,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                         />
                                     </div>
                                 )}
-                                {showSettings ? t('Go back') : ''}
+                                {showSettings && (!isPopupCard || isUserscript()) ? t('Go back') : ''}
                             </div>
                         </Button>
                     </Tooltip>

@@ -1,4 +1,5 @@
 import '../enable-dev-hmr'
+import { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Translator } from '../../common/components/Translator'
 import { Client as Styletron } from 'styletron-engine-atomic'
@@ -15,6 +16,11 @@ const root = createRoot(document.getElementById('root') as HTMLElement)
 
 function App() {
     const { theme } = useTheme()
+
+    useEffect(() => {
+        document.documentElement.style.backgroundColor = theme.colors.backgroundPrimary
+        document.body.style.backgroundColor = theme.colors.backgroundPrimary
+    }, [theme.colors.backgroundPrimary])
 
     return (
         <div

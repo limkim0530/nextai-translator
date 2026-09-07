@@ -1,4 +1,4 @@
-import { containerID, documentPadding, popupCardID, popupThumbID, zIndex } from './consts'
+import { containerID, popupCardID, popupThumbID, zIndex } from './consts'
 
 function attachEventsToContainer($container: HTMLElement) {
     $container.addEventListener('mousedown', (event) => {
@@ -59,13 +59,4 @@ export async function queryPopupThumbElement(): Promise<HTMLDivElement | null> {
 export async function queryPopupCardElement(): Promise<HTMLDivElement | null> {
     const $container = await getContainer()
     return $container.shadowRoot?.querySelector(`#${popupCardID}`) as HTMLDivElement | null
-}
-
-export function calculateMaxXY($popupCard: HTMLElement): number[] {
-    const { innerWidth, innerHeight, scrollX, scrollY } = window
-    const { scrollLeft, scrollTop } = document.documentElement
-    const { width, height } = $popupCard.getBoundingClientRect()
-    const maxX = (scrollX || scrollLeft) + innerWidth - width - documentPadding
-    const maxY = (scrollY || scrollTop) + innerHeight - height - documentPadding
-    return [maxX, maxY]
 }

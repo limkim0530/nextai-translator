@@ -251,10 +251,13 @@ async function main() {
                 if (settings.autoTranslate === true) {
                     const x = getClientX(event)
                     const y = getClientY(event)
-                    showPopupCard(
-                        { getBoundingClientRect: () => new DOMRect(x, y, popupCardOffset, popupCardOffset) },
-                        text
-                    )
+                    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null
+                    const rangeRect = range ? range.getBoundingClientRect() : null
+                    const hasValidRangeRect = rangeRect && (rangeRect.width > 0 || rangeRect.height > 0)
+                    const reference = hasValidRangeRect
+                        ? { getBoundingClientRect: () => range.getBoundingClientRect() }
+                        : { getBoundingClientRect: () => new DOMRect(x, y, popupCardOffset, popupCardOffset) }
+                    showPopupCard(reference, text)
                 } else if (settings.alwaysShowIcons === true && getCaretNodeType(event) === Node.TEXT_NODE) {
                     showPopupThumb(text, getPageX(event) + popupCardOffset, getPageY(event) + popupCardOffset)
                 }
@@ -269,9 +272,16 @@ async function main() {
         if (request.type === 'open-translator') {
             if (window !== window.top) return
             const text = request.info.selectionText ?? ''
+            const sel = window.getSelection()
+            const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null
+            const rangeRect = range ? range.getBoundingClientRect() : null
+            const hasValidRangeRect = rangeRect && (rangeRect.width > 0 || rangeRect.height > 0)
             const x = lastMouseEvent ? getClientX(lastMouseEvent) : 0
             const y = lastMouseEvent ? getClientY(lastMouseEvent) : 0
-            showPopupCard({ getBoundingClientRect: () => new DOMRect(x, y, popupCardOffset, popupCardOffset) }, text)
+            const reference = hasValidRangeRect
+                ? { getBoundingClientRect: () => range.getBoundingClientRect() }
+                : { getBoundingClientRect: () => new DOMRect(x, y, popupCardOffset, popupCardOffset) }
+            showPopupCard(reference, text)
         }
     })
 
