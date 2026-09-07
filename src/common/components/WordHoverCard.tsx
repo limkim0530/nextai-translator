@@ -215,6 +215,22 @@ export interface WordHoverProviderProps {
     onOpenDetails: (word: string) => void
 }
 
+function calculateCardPosition(anchor: HTMLElement, cardEl?: HTMLElement | null) {
+    const anchorRect = anchor.getBoundingClientRect()
+    const cardWidth = cardEl ? cardEl.getBoundingClientRect().width : CARD_WIDTH
+    const cardHeight = cardEl ? cardEl.getBoundingClientRect().height : 160
+    const left = Math.min(
+        Math.max(anchorRect.left + anchorRect.width / 2 - cardWidth / 2, VIEWPORT_PADDING),
+        window.innerWidth - cardWidth - VIEWPORT_PADDING
+    )
+    const spaceBelow = window.innerHeight - anchorRect.bottom
+    const top =
+        spaceBelow >= cardHeight + VIEWPORT_PADDING
+            ? anchorRect.bottom + 9
+            : Math.max(VIEWPORT_PADDING, anchorRect.top - cardHeight - 9)
+    return { left, top }
+}
+
 export function WordHoverProvider({ children, enabled = true, onOpenDetails }: WordHoverProviderProps) {
     const { t } = useTranslation()
     const { theme, themeType } = useTheme()
@@ -240,7 +256,7 @@ export function WordHoverProvider({ children, enabled = true, onOpenDetails }: W
     const scheduleHide = useCallback(() => {
         clearTimeout(showTimerRef.current)
         clearTimeout(hideTimerRef.current)
-        hideTimerRef.current = setTimeout(() => setActiveWord(null), 130)
+        hideTimerRef.current = setTimeout(() => setActiveWord(null), 180)
     }, [])
 
     const show = useCallback(
@@ -252,6 +268,7 @@ export function WordHoverProvider({ children, enabled = true, onOpenDetails }: W
                 () => {
                     setPreview(null)
                     setStatus('loading')
+                    setPosition(calculateCardPosition(anchor))
                     setActiveWord({ word, anchor })
                 },
                 immediate ? 0 : 220
@@ -295,37 +312,61 @@ export function WordHoverProvider({ children, enabled = true, onOpenDetails }: W
         return () => controller.abort()
     }, [activeWord, settings])
 
-    useLayoutEffect(() => {
+    const updatePosition = useCallback(() => {
         if (!activeWord || !cardRef.current) return
-        const anchorRect = activeWord.anchor.getBoundingClientRect()
-        const cardRect = cardRef.current.getBoundingClientRect()
-        const left = Math.min(
-            Math.max(anchorRect.left + anchorRect.width / 2 - cardRect.width / 2, VIEWPORT_PADDING),
-            window.innerWidth - cardRect.width - VIEWPORT_PADDING
-        )
-        const spaceBelow = window.innerHeight - anchorRect.bottom
-        const top =
-            spaceBelow >= cardRect.height + VIEWPORT_PADDING
-                ? anchorRect.bottom + 9
-                : Math.max(VIEWPORT_PADDING, anchorRect.top - cardRect.height - 9)
-        setPosition({ left, top })
-    }, [activeWord, preview, status])
+        setPosition(calculateCardPosition(activeWord.anchor, cardRef.current))
+    }, [activeWord])
+
+    useLayoutEffect(() => {
+        updatePosition()
+    }, [updatePosition, preview, status])
 
     useEffect(() => {
         if (!activeWord) return
-        const hide = () => setActiveWord(null)
         const onKeyDown = (event: globalThis.KeyboardEvent) => {
-            if (event.key === 'Escape') hide()
+            if (event.key === 'Escape') setActiveWord(null)
         }
-        window.addEventListener('resize', hide)
-        window.addEventListener('scroll', hide, true)
+        const onResize = () => {
+            updatePosition()
+        }
+        const onScroll = (event: Event) => {
+            if (event.target instanceof Node && cardRef.current?.contains(event.target)) {
+                return
+            }
+            if (!activeWord.anchor.isConnected) {
+                setActiveWord(null)
+                return
+            }
+            const anchorRect = activeWord.anchor.getBoundingClientRect()
+            if (anchorRect.bottom <= 0 || anchorRect.top >= window.innerHeight) {
+                setActiveWord(null)
+            } else {
+                updatePosition()
+            }
+        }
+        const onPointerDown = (event: Event) => {
+            const target = event.target
+            if (
+                target instanceof Node &&
+                cardRef.current &&
+                !cardRef.current.contains(target) &&
+                !activeWord.anchor.contains(target)
+            ) {
+                setActiveWord(null)
+            }
+        }
+
+        window.addEventListener('resize', onResize)
+        window.addEventListener('scroll', onScroll, true)
         document.addEventListener('keydown', onKeyDown)
+        document.addEventListener('pointerdown', onPointerDown)
         return () => {
-            window.removeEventListener('resize', hide)
-            window.removeEventListener('scroll', hide, true)
+            window.removeEventListener('resize', onResize)
+            window.removeEventListener('scroll', onScroll, true)
             document.removeEventListener('keydown', onKeyDown)
+            document.removeEventListener('pointerdown', onPointerDown)
         }
-    }, [activeWord])
+    }, [activeWord, updatePosition])
 
     const contextValue = useMemo(
         () => ({ enabled, show, scheduleHide, keepOpen, openDetails }),

@@ -28,7 +28,11 @@ describe('parseDictionaryResponse', () => {
                             },
                             {
                                 partOfSpeech: 'adverb',
-                                definitions: [{ definition: 'A third result that should not be displayed.' }],
+                                definitions: [{ definition: 'Gracefully.' }],
+                            },
+                            {
+                                partOfSpeech: 'verb',
+                                definitions: [{ definition: 'A fourth result that should not be displayed.' }],
                             },
                         ],
                         sourceUrls: ['https://en.wiktionary.org/wiki/elegant'],
@@ -50,8 +54,14 @@ describe('parseDictionaryResponse', () => {
                     definition: 'A refined person.',
                     example: undefined,
                 },
+                {
+                    partOfSpeech: 'adverb',
+                    definition: 'Gracefully.',
+                    example: undefined,
+                },
             ],
             sourceUrl: 'https://en.wiktionary.org/wiki/elegant',
+            sourceName: 'Free Dictionary',
         })
     })
 
