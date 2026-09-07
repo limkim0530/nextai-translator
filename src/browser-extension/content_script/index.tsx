@@ -253,10 +253,11 @@ async function main() {
                     const y = getClientY(event)
                     const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null
                     const rangeRect = range ? range.getBoundingClientRect() : null
-                    const hasValidRangeRect = rangeRect && (rangeRect.width > 0 || rangeRect.height > 0)
-                    const reference = hasValidRangeRect
-                        ? { getBoundingClientRect: () => range.getBoundingClientRect() }
-                        : { getBoundingClientRect: () => new DOMRect(x, y, popupCardOffset, popupCardOffset) }
+                    const hasValidRangeRect = range && rangeRect && (rangeRect.width > 0 || rangeRect.height > 0)
+                    const reference =
+                        hasValidRangeRect && range
+                            ? { getBoundingClientRect: () => range.getBoundingClientRect() }
+                            : { getBoundingClientRect: () => new DOMRect(x, y, popupCardOffset, popupCardOffset) }
                     showPopupCard(reference, text)
                 } else if (settings.alwaysShowIcons === true && getCaretNodeType(event) === Node.TEXT_NODE) {
                     showPopupThumb(text, getPageX(event) + popupCardOffset, getPageY(event) + popupCardOffset)
@@ -275,12 +276,13 @@ async function main() {
             const sel = window.getSelection()
             const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null
             const rangeRect = range ? range.getBoundingClientRect() : null
-            const hasValidRangeRect = rangeRect && (rangeRect.width > 0 || rangeRect.height > 0)
+            const hasValidRangeRect = range && rangeRect && (rangeRect.width > 0 || rangeRect.height > 0)
             const x = lastMouseEvent ? getClientX(lastMouseEvent) : 0
             const y = lastMouseEvent ? getClientY(lastMouseEvent) : 0
-            const reference = hasValidRangeRect
-                ? { getBoundingClientRect: () => range.getBoundingClientRect() }
-                : { getBoundingClientRect: () => new DOMRect(x, y, popupCardOffset, popupCardOffset) }
+            const reference =
+                hasValidRangeRect && range
+                    ? { getBoundingClientRect: () => range.getBoundingClientRect() }
+                    : { getBoundingClientRect: () => new DOMRect(x, y, popupCardOffset, popupCardOffset) }
             showPopupCard(reference, text)
         }
     })
