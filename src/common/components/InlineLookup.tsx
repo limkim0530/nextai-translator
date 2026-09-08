@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { Markdown } from './Markdown'
 import { SpinnerIcon } from './SpinnerIcon'
 import { IThemedStyleProps } from '../types'

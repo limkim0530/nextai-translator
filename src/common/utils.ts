@@ -2,10 +2,14 @@
 import { createParser } from 'eventsource-parser'
 import { IBrowser, ISettings } from './types'
 import { getUniversalFetch } from './universal-fetch'
+import { electronBrowser } from './polyfills/electron'
+import { tauriBrowser } from './polyfills/tauri'
+import { userscriptBrowser } from './polyfills/userscript'
 import { v4 as uuidv4 } from 'uuid'
 import { listen, Event, emit } from '@tauri-apps/api/event'
 import { parse as bestEffortJSONParse } from 'best-effort-json-parser'
 import { commands } from '@/tauri/bindings'
+import { BaseDirectory, writeTextFile } from '@tauri-apps/plugin-fs'
 import { DEFAULT_DICTIONARY_PROVIDERS } from './dictionary/presets'
 
 export const defaultAutoTranslate = false
@@ -173,13 +177,13 @@ export async function setSettings(settings: Partial<ISettings>) {
 
 export async function getBrowser(): Promise<IBrowser> {
     if (isElectron()) {
-        return (await import('./polyfills/electron')).electronBrowser
+        return electronBrowser
     }
     if (isTauri()) {
-        return (await import('./polyfills/tauri')).tauriBrowser
+        return tauriBrowser
     }
     if (isUserscript()) {
-        return (await import('./polyfills/userscript')).userscriptBrowser
+        return userscriptBrowser
     }
     return (await import('webextension-polyfill')).default
 }
@@ -192,7 +196,7 @@ export const isTauri = () => {
     if (typeof window === 'undefined') {
         return false
     }
-    return window['__TAURI__' as any] !== undefined
+    return window['__TAURI__' as any] !== undefined || (window as any).__TAURI_INTERNALS__ !== undefined
 }
 
 export const isBrowserExtensionOptions = () => {
@@ -255,7 +259,6 @@ export async function exportToCsv<T extends Record<string, string | number>>(fil
     }
 
     if (isDesktopApp()) {
-        const { BaseDirectory, writeTextFile } = await import('@tauri-apps/plugin-fs')
         try {
             return await writeTextFile(filename, csvFile, { baseDir: BaseDirectory.Desktop })
         } catch (e) {
@@ -466,3 +469,52 @@ export function getAssetUrl(asset: string) {
 }
 export const isMacOS = navigator.userAgent.includes('Mac OS X')
 export const isWindows = navigator.userAgent.includes('Windows')
+
+export function debounce<T extends (...args: any[]) => any>(
+    fn: T,
+    wait = 250
+): ((...args: Parameters<T>) => void) & { cancel: () => void } {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    const debounced = (...args: Parameters<T>) => {
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId)
+        }
+        timeoutId = setTimeout(() => {
+            timeoutId = null
+            fn(...args)
+        }, wait)
+    }
+    debounced.cancel = () => {
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId)
+            timeoutId = null
+        }
+    }
+    return debounced
+}
+
+export function isEqual(a: unknown, b: unknown): boolean {
+    if (Object.is(a, b)) return true
+    if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false
+    if (Array.isArray(a) !== Array.isArray(b)) return false
+
+    if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length) return false
+        for (let i = 0; i < a.length; i++) {
+            if (!isEqual(a[i], b[i])) return false
+        }
+        return true
+    }
+
+    const aObj = a as Record<string, unknown>
+    const bObj = b as Record<string, unknown>
+    const keysA = Object.keys(aObj)
+    const keysB = Object.keys(bObj)
+    if (keysA.length !== keysB.length) return false
+    for (const key of keysA) {
+        if (!Object.prototype.hasOwnProperty.call(bObj, key) || !isEqual(aObj[key], bObj[key])) {
+            return false
+        }
+    }
+    return true
+}

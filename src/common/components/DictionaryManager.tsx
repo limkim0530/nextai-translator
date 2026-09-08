@@ -1,11 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from 'baseui/button'
-import { Input } from 'baseui/input'
-import { Select } from 'baseui/select'
-import { Tag, HIERARCHY as TAG_HIERARCHY } from 'baseui/tag'
-import { Checkbox } from 'baseui/checkbox'
-import { createUseStyles } from 'react-jss'
+import { Button, Input, Select, Checkbox, Tag, TAG_HIERARCHY } from './ui'
+import { createUseStyles } from '@/common/styles'
 import { RiDeleteBin5Line } from 'react-icons/ri'
 import { RxExternalLink } from 'react-icons/rx'
 import { useTheme } from '../hooks/useTheme'
@@ -83,6 +79,7 @@ const useStyles = createUseStyles({
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
+        lineHeight: 1,
     },
     rowMeta: (props: IThemedStyleProps) => ({
         fontSize: '11px',
@@ -374,7 +371,15 @@ export function DictionaryManager({
                                     >
                                         <div className={styles.rowMain}>
                                             <div className={styles.rowName}>
-                                                <span>{getDisplayName(p) || t('Unnamed Provider')}</span>
+                                                <span
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        lineHeight: 1,
+                                                    }}
+                                                >
+                                                    {getDisplayName(p) || t('Unnamed Provider')}
+                                                </span>
                                                 {isDefault && (
                                                     <Tag
                                                         closeable={false}

@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from 'baseui/button'
-import { Input } from 'baseui/input'
-import { Select } from 'baseui/select'
-import { Textarea } from 'baseui/textarea'
-import { Tag, HIERARCHY as TAG_HIERARCHY } from 'baseui/tag'
-import { createUseStyles } from 'react-jss'
+import { Button, Input, Select, Textarea, Tag, TAG_HIERARCHY } from './ui'
+import { createUseStyles } from '@/common/styles'
 import { IoMdAdd } from 'react-icons/io'
 import { RiDeleteBin5Line } from 'react-icons/ri'
 import { MdRefresh } from 'react-icons/md'
@@ -123,6 +119,7 @@ const useStyles = createUseStyles({
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
+        lineHeight: 1,
     },
     rowMeta: (props: IThemedStyleProps) => ({
         fontSize: '11px',
@@ -590,7 +587,12 @@ export function ProviderManager({
                                 <div className={styles.rowName}>
                                     <ProviderIcon provider={provider} size={16} style={{ flexShrink: 0 }} />
                                     <span
-                                        style={hasError ? { color: theme.colors.contentNegative ?? '#d44' } : undefined}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            lineHeight: 1,
+                                            ...(hasError ? { color: theme.colors.contentNegative ?? '#d44' } : {}),
+                                        }}
                                     >
                                         {getDisplayName(provider) || t('Unnamed provider')}
                                     </span>
@@ -895,13 +897,13 @@ export function ProviderManager({
                     size='mini'
                     kind='tertiary'
                     isLoading={refreshing}
+                    startEnhancer={<MdRefresh size={13} />}
                     onClick={(e) => {
                         e.preventDefault()
                         refreshCatalog()
                     }}
                 >
-                    <MdRefresh size={13} />
-                    &nbsp;{t('Refresh')}
+                    {t('Refresh')}
                 </Button>
             </div>
         </div>

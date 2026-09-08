@@ -1,7 +1,9 @@
-import { StatefulTooltip, StatefulTooltipProps } from 'baseui/tooltip'
+import React from 'react'
+import { StatefulTooltip, StatefulTooltipProps } from './ui/Tooltip'
 
-interface ITooltipProps extends StatefulTooltipProps {
-    content: string
+export interface ITooltipProps extends StatefulTooltipProps {
+    content: React.ReactNode
+    onMouseEnterDelay?: number
 }
 
 const Tooltip = ({ content, children, ...props }: ITooltipProps) => {

@@ -1,20 +1,19 @@
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useActions, ACTIONS_SWR_KEY } from '../hooks/useActions'
+import { mutate } from 'swr'
 import icon from '../assets/images/icon.png'
 import { actionService } from '../services/action'
 import { FiEdit } from 'react-icons/fi'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { IThemedStyleProps } from '../types'
 import { useTheme } from '../hooks/useTheme'
 import { useTranslation } from 'react-i18next'
 import { format } from 'date-fns'
-import { Button } from 'baseui/button'
-import { List, arrayMove } from 'baseui/dnd-list'
+import { Button, List, arrayMove, Modal, ModalHeader, ModalBody, ModalFooter, ModalButton, Skeleton } from './ui'
 import { RiDeleteBinLine } from 'react-icons/ri'
 import { IoMdAdd } from 'react-icons/io'
 import { createElement, useCallback, useReducer, useState } from 'react'
 import * as mdIcons from 'react-icons/md'
 import { Action } from '../internal-services/db'
-import { Modal, ModalBody, ModalButton, ModalFooter, ModalHeader } from 'baseui/modal'
 import { ActionForm } from './ActionForm'
 import { IconType } from 'react-icons'
 import { isDesktopApp, getAssetUrl } from '../utils'
@@ -70,6 +69,7 @@ const useStyles = createUseStyles({
         gap: '8px',
         flexShrink: 0,
         marginRight: 'auto',
+        lineHeight: 1,
     },
     icon: {
         'display': 'block',
@@ -84,6 +84,9 @@ const useStyles = createUseStyles({
         'fontSize': '14px',
         'fontWeight': 600,
         'cursor': 'unset',
+        'lineHeight': 1,
+        'display': 'inline-flex',
+        'alignItems': 'center',
         '@media screen and (max-width: 570px)': {
             display: props.isDesktopApp ? 'none' : undefined,
         },
@@ -98,15 +101,20 @@ const useStyles = createUseStyles({
         paddingTop: props.embedded ? 12 : isDesktopApp() ? 70 : 0,
         width: '100%',
     }),
-    actionItem: () => ({
+    actionItem: (props: IActionManagerStyleProps) => ({
         'width': '100%',
+        'padding': '10px 14px',
         'display': 'flex',
         'flexDirection': 'row',
         'alignItems': 'center',
-        'gap': '20px',
+        'gap': '14px',
+        'borderRadius': '6px',
         'transition': 'background 0.2s ease',
+        '&:hover': {
+            backgroundColor: props.themeType === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+        },
         '&:hover $actionOperation': {
-            display: 'flex',
+            opacity: 1,
         },
     }),
     actionContent: () => ({
@@ -118,11 +126,13 @@ const useStyles = createUseStyles({
     }),
     actionOperation: {
         flexShrink: 0,
-        display: 'none',
+        display: 'flex',
+        opacity: 0.85,
+        transition: 'opacity 0.2s ease',
         flexDirection: 'row',
         alignItems: 'center',
         marginLeft: 'auto',
-        gap: 10,
+        gap: 6,
     },
     name: {
         fontSize: '16px',
@@ -130,6 +140,7 @@ const useStyles = createUseStyles({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
+        lineHeight: 1,
     },
     prompts: (props: IThemedStyleProps) => ({
         'color': props.theme.colors.contentSecondary,
@@ -167,7 +178,7 @@ export function ActionManager({ draggable = true, embedded = false }: IActionMan
     const { t } = useTranslation()
     const { theme, themeType } = useTheme()
     const styles = useStyles({ theme, themeType, isDesktopApp: isDesktopApp(), embedded })
-    const actions = useLiveQuery(() => actionService.list(), [refreshActionsFlag])
+    const actions = useActions(refreshActionsFlag)
     const [showActionForm, setShowActionForm] = useState(false)
     const [updatingAction, setUpdatingAction] = useState<Action>()
     const [deletingAction, setDeletingAction] = useState<Action>()
@@ -180,6 +191,24 @@ export function ActionManager({ draggable = true, embedded = false }: IActionMan
         }
         emit('refresh-actions', {})
     }, [])
+
+    const handleReorder = useCallback(
+        async (reordered: Action[]) => {
+            const updated = reordered.map((a, idx) => ({
+                ...a,
+                idx,
+            }))
+            void mutate(ACTIONS_SWR_KEY, updated, false)
+            try {
+                await actionService.bulkPut(updated)
+            } catch (err) {
+                console.error('Failed to save reordered actions:', err)
+            } finally {
+                refreshActions()
+            }
+        },
+        [refreshActions]
+    )
 
     return (
         <div
@@ -200,7 +229,9 @@ export function ActionManager({ draggable = true, embedded = false }: IActionMan
                         <img data-tauri-drag-region className={styles.icon} src={getAssetUrl(icon)} alt='icon' />
                     )}
                     <div className={styles.iconText}>
-                        {embedded ? `${t('All Actions')} (${actions?.length ?? 0})` : t('Action Manager')}
+                        {embedded
+                            ? `${t('All Actions')}${actions !== undefined ? ` (${actions.length})` : ''}`
+                            : t('Action Manager')}
                     </div>
                 </div>
                 <div
@@ -225,98 +256,124 @@ export function ActionManager({ draggable = true, embedded = false }: IActionMan
                 </div>
             </div>
             <div className={styles.actionList}>
-                <List
-                    overrides={{
-                        Item: {
-                            style: {
-                                backgroundColor: 'transparent',
-                                // backgroundColor: color(theme.colors.backgroundPrimary).alpha(0.9).lighten(0.8).string(),
+                {actions === undefined ? (
+                    <div style={{ padding: '20px 14px' }}>
+                        <Skeleton rows={4} height='160px' width='100%' animation />
+                    </div>
+                ) : actions.length === 0 ? (
+                    <div
+                        style={{
+                            padding: '40px 14px',
+                            textAlign: 'center',
+                            color: theme.colors.contentSecondary,
+                        }}
+                    >
+                        {t('No actions')}
+                    </div>
+                ) : (
+                    <List
+                        overrides={{
+                            Item: {
+                                style: {
+                                    backgroundColor: 'transparent',
+                                    // backgroundColor: color(theme.colors.backgroundPrimary).alpha(0.9).lighten(0.8).string(),
+                                },
                             },
-                        },
-                    }}
-                    onChange={async ({ oldIndex, newIndex }) => {
-                        const newActions = arrayMove(actions!, oldIndex, newIndex)
-                        await actionService.bulkPut(
-                            newActions.map((a, idx) => {
-                                return {
-                                    ...a,
-                                    idx,
-                                }
-                            })
-                        )
-                        refreshActions()
-                    }}
-                    items={actions?.map((action, idx) => (
-                        <div key={action.id} className={styles.actionItem}>
-                            <div className={styles.actionContent}>
-                                <div className={styles.name}>
-                                    {action.icon &&
-                                        createElement((mdIcons as Record<string, IconType>)[action.icon], { size: 16 })}
-                                    {action.mode ? t(action.name) : action.name}
-                                    {action.mode && (
-                                        <div
-                                            style={{
-                                                display: 'inline-block',
-                                                fontSize: '12px',
-                                                background: theme.colors.backgroundTertiary,
-                                                padding: '1px 4px',
-                                                borderRadius: '2px',
-                                            }}
-                                        >
-                                            {t('built-in')}
+                        }}
+                        onChange={async ({ oldIndex, newIndex }) => {
+                            if (!actions) return
+                            const newActions = arrayMove(actions, oldIndex, newIndex)
+                            await handleReorder(newActions)
+                        }}
+                        items={actions?.map((action, idx) => {
+                            const createdAtTime = +action?.createdAt
+                            const displayTime =
+                                !isNaN(createdAtTime) && createdAtTime > 0
+                                    ? format(createdAtTime, 'yyyy-MM-dd HH:mm:ss')
+                                    : format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+
+                            return (
+                                <div key={action.id} className={styles.actionItem}>
+                                    <div className={styles.actionContent}>
+                                        <div className={styles.name}>
+                                            {action.icon && (mdIcons as Record<string, IconType>)[action.icon] && (
+                                                <span
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        lineHeight: 1,
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    {createElement((mdIcons as Record<string, IconType>)[action.icon], {
+                                                        size: 16,
+                                                    })}
+                                                </span>
+                                            )}
+                                            <span
+                                                style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}
+                                            >
+                                                {action.mode ? t(action.name) : action.name}
+                                            </span>
+                                            {action.mode && (
+                                                <div
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        fontSize: '12px',
+                                                        lineHeight: 1,
+                                                        background: theme.colors.backgroundTertiary,
+                                                        padding: '2px 4px',
+                                                        borderRadius: '2px',
+                                                    }}
+                                                >
+                                                    {t('built-in')}
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                                <div className={styles.prompts}>
-                                    <div>{action.rolePrompt}</div>
-                                    <div>{action.commandPrompt}</div>
-                                </div>
-                                {action.providerId && (
-                                    <div
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            fontSize: '11px',
-                                            background: theme.colors.backgroundTertiary,
-                                            padding: '1px 6px',
-                                            borderRadius: '6px',
-                                            marginTop: '2px',
-                                            color: theme.colors.contentSecondary,
-                                        }}
-                                    >
-                                        {settings
-                                            ? (getProviderLabel(settings, action.providerId) ?? t('Deleted provider'))
-                                            : action.providerId}
-                                        {action.apiModel && ` / ${action.apiModel}`}
+                                        <div className={styles.prompts}>
+                                            <div>{action.rolePrompt}</div>
+                                            <div>{action.commandPrompt}</div>
+                                        </div>
+                                        {action.providerId && (
+                                            <div
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    fontSize: '11px',
+                                                    background: theme.colors.backgroundTertiary,
+                                                    padding: '1px 6px',
+                                                    borderRadius: '6px',
+                                                    marginTop: '2px',
+                                                    color: theme.colors.contentSecondary,
+                                                }}
+                                            >
+                                                {settings
+                                                    ? (getProviderLabel(settings, action.providerId) ??
+                                                      t('Deleted provider'))
+                                                    : action.providerId}
+                                                {action.apiModel && ` / ${action.apiModel}`}
+                                            </div>
+                                        )}
+                                        <div className={styles.metadata}>
+                                            <div>
+                                                {t('Created at')} {displayTime}
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
-                                <div className={styles.metadata}>
-                                    <div>
-                                        {t('Created at')} {format(+action?.createdAt, 'yyyy-MM-dd HH:mm:ss')}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className={styles.actionOperation}>
-                                {!draggable && (
-                                    <>
+                                    <div className={styles.actionOperation}>
                                         <Button
                                             type='button'
                                             size='mini'
+                                            kind='tertiary'
                                             disabled={idx === 0}
                                             onClick={async (e) => {
                                                 e.preventDefault()
                                                 e.stopPropagation()
                                                 const newActions = arrayMove(actions, idx, idx - 1)
-                                                await actionService.bulkPut(
-                                                    newActions.map((a, idx) => {
-                                                        return {
-                                                            ...a,
-                                                            idx,
-                                                        }
-                                                    })
-                                                )
-                                                refreshActions()
+                                                await handleReorder(newActions)
                                             }}
                                         >
                                             <MdArrowUpward size={12} />
@@ -324,56 +381,49 @@ export function ActionManager({ draggable = true, embedded = false }: IActionMan
                                         <Button
                                             type='button'
                                             size='mini'
+                                            kind='tertiary'
                                             disabled={idx === actions.length - 1}
                                             onClick={async (e) => {
                                                 e.preventDefault()
                                                 e.stopPropagation()
                                                 const newActions = arrayMove(actions, idx, idx + 1)
-                                                await actionService.bulkPut(
-                                                    newActions.map((a, idx) => {
-                                                        return {
-                                                            ...a,
-                                                            idx,
-                                                        }
-                                                    })
-                                                )
-                                                refreshActions()
+                                                await handleReorder(newActions)
                                             }}
                                         >
                                             <MdArrowDownward size={12} />
                                         </Button>
-                                    </>
-                                )}
-                                <Button
-                                    type='button'
-                                    size='mini'
-                                    startEnhancer={<FiEdit size={12} />}
-                                    onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
-                                        setUpdatingAction(action)
-                                        setShowActionForm(true)
-                                    }}
-                                >
-                                    {t('Update')}
-                                </Button>
-                                <Button
-                                    type='button'
-                                    size='mini'
-                                    startEnhancer={<RiDeleteBinLine size={12} />}
-                                    disabled={!!action.mode}
-                                    onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
-                                        setDeletingAction(action)
-                                    }}
-                                >
-                                    {t('Delete')}
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                />
+                                        <Button
+                                            type='button'
+                                            size='mini'
+                                            startEnhancer={<FiEdit size={12} />}
+                                            onClick={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                                setUpdatingAction(action)
+                                                setShowActionForm(true)
+                                            }}
+                                        >
+                                            {t('Update')}
+                                        </Button>
+                                        <Button
+                                            type='button'
+                                            size='mini'
+                                            startEnhancer={<RiDeleteBinLine size={12} />}
+                                            disabled={!!action.mode}
+                                            onClick={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                                setDeletingAction(action)
+                                            }}
+                                        >
+                                            {t('Delete')}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    />
+                )}
             </div>
             <Modal
                 isOpen={showActionForm}
@@ -386,9 +436,19 @@ export function ActionManager({ draggable = true, embedded = false }: IActionMan
                 autoFocus
                 animate
                 role='dialog'
+                overrides={{
+                    Dialog: {
+                        style: {
+                            width: '560px',
+                            maxWidth: '90vw',
+                        },
+                    },
+                }}
             >
                 <ModalHeader>
-                    {updatingAction ? t('Update sth', [t('Action')]) : t('Create sth', [t('Action')])}
+                    {updatingAction
+                        ? `${t('Update sth', [t('Action')])} - ${updatingAction.mode ? t(updatingAction.name) : updatingAction.name}`
+                        : t('Create sth', [t('Action')])}
                 </ModalHeader>
                 <ModalBody>
                     <ActionForm
@@ -410,6 +470,14 @@ export function ActionManager({ draggable = true, embedded = false }: IActionMan
                 autoFocus
                 animate
                 role='dialog'
+                overrides={{
+                    Dialog: {
+                        style: {
+                            width: '480px',
+                            maxWidth: '90vw',
+                        },
+                    },
+                }}
             >
                 <ModalHeader>{t('Delete sth', [t('Action')])}</ModalHeader>
                 <ModalBody>{t('Are you sure to delete sth?', [`${t('Action')} ${deletingAction?.name}`])}</ModalBody>

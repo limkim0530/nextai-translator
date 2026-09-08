@@ -1,8 +1,7 @@
 import { CodeBlock as BaseCodeBlock } from 'react-code-block'
-import { Button } from 'baseui/button'
+import { Button } from './ui'
 import { themes } from 'prism-react-renderer'
-import { createUseStyles } from 'react-jss'
-import { useCopyToClipboard } from 'react-use'
+import { createUseStyles } from '@/common/styles'
 import { useEffect, useState } from 'react'
 import { useTheme } from '../hooks/useTheme'
 
@@ -22,12 +21,15 @@ export interface ICodeBlockProps {
 export function CodeBlock({ code, language }: ICodeBlockProps) {
     const { theme, themeType } = useTheme()
     const styles = useStyles()
-    const [, copyToClipboard] = useCopyToClipboard()
     const [isCopied, setIsCopied] = useState(false)
 
-    const copyCode = () => {
-        copyToClipboard(code)
-        setIsCopied(true)
+    const copyCode = async () => {
+        try {
+            await navigator.clipboard.writeText(code)
+            setIsCopied(true)
+        } catch (err) {
+            console.error('Failed to copy code to clipboard', err)
+        }
     }
     useEffect(() => {
         const timeout = setTimeout(() => {

@@ -1,19 +1,19 @@
 import { useTranslation } from 'react-i18next'
 import { ICreateActionOption, IUpdateActionOption } from '../internal-services/action'
 import { Action } from '../internal-services/db'
-import { createForm } from './Form'
-import { Input } from 'baseui/input'
-import { Textarea } from 'baseui/textarea'
-import { Button } from 'baseui/button'
-import { useCallback, useEffect, useState } from 'react'
+import { Input, Textarea, Button } from './ui'
+import { createElement, useCallback, useEffect, useState } from 'react'
+import * as mdIcons from 'react-icons/md'
+import { IconType } from 'react-icons'
 import { actionService } from '../services/action'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { IThemedStyleProps } from '../types'
 import { useTheme } from '../hooks/useTheme'
 import { IconPicker } from './IconPicker'
 import { RenderingFormatSelector } from './RenderingFormatSelector'
-import { ProviderSelector } from './Settings'
+import { ProviderSelector } from './ProviderSelector'
 import { ActionModelSelector } from './ActionModelSelector'
+import { DEFAULT_ACTION_ICON } from '../constants'
 
 const useStyles = createUseStyles({
     placeholder: (props: IThemedStyleProps) => ({
@@ -34,6 +34,28 @@ const useStyles = createUseStyles({
         marginTop: 10,
         paddingLeft: 20,
     }),
+    formItem: {
+        marginBottom: '16px',
+    },
+    label: {
+        marginBottom: '6px',
+        fontSize: '13px',
+        fontWeight: 500,
+    },
+    requiredMark: {
+        color: '#e53e3e',
+        marginLeft: '4px',
+    },
+    errorMessage: {
+        color: '#e53e3e',
+        fontSize: '12px',
+        marginTop: '4px',
+    },
+    caption: {
+        color: '#666',
+        fontSize: '12px',
+        marginTop: '4px',
+    },
 })
 
 export interface IActionFormProps {
@@ -41,35 +63,94 @@ export interface IActionFormProps {
     onSubmit: (action: Action) => void
 }
 
-const { Form, FormItem, useForm } = createForm<ICreateActionOption>()
-
 export function ActionForm(props: IActionFormProps) {
     const { theme, themeType } = useTheme()
     const styles = useStyles({ theme, themeType })
-
     const { t } = useTranslation()
 
     const [loading, setLoading] = useState(false)
+    const [values, setValues] = useState<ICreateActionOption>(() => ({
+        name: props.action?.name ?? '',
+        icon: props.action?.icon ?? DEFAULT_ACTION_ICON,
+        rolePrompt: props.action?.rolePrompt ?? '',
+        commandPrompt: props.action?.commandPrompt ?? '',
+        outputRenderingFormat: props.action?.outputRenderingFormat,
+        providerId: props.action?.providerId,
+        apiModel: props.action?.apiModel,
+    }))
+    const [errors, setErrors] = useState<Record<string, string>>({})
 
-    const onSubmit = useCallback(
-        async (values: ICreateActionOption) => {
-            setLoading(true)
-            let action: Action
-            if (props.action) {
-                const updateOpt: IUpdateActionOption = { ...values }
-                if (!values.providerId) {
-                    updateOpt.clearFields = ['providerId', 'apiModel']
-                    delete updateOpt.providerId
-                    delete updateOpt.apiModel
-                }
-                action = await actionService.update(props.action, updateOpt)
-            } else {
-                action = await actionService.create(values)
+    useEffect(() => {
+        if (props.action) {
+            setValues({
+                name: props.action.name ?? '',
+                icon: props.action.icon ?? DEFAULT_ACTION_ICON,
+                rolePrompt: props.action.rolePrompt ?? '',
+                commandPrompt: props.action.commandPrompt ?? '',
+                outputRenderingFormat: props.action.outputRenderingFormat,
+                providerId: props.action.providerId,
+                apiModel: props.action.apiModel,
+            })
+        }
+    }, [props.action])
+
+    const handleChange = <K extends keyof ICreateActionOption>(field: K, val: ICreateActionOption[K]) => {
+        setValues((prev) => {
+            const next = { ...prev, [field]: val }
+            if (field === 'providerId' && val !== prev.providerId) {
+                next.apiModel = ''
             }
-            props.onSubmit(action)
-            setLoading(false)
+            return next
+        })
+        if (errors[field]) {
+            setErrors((prev) => ({ ...prev, [field]: '' }))
+        }
+    }
+
+    const handleSubmit = useCallback(
+        async (e?: React.SyntheticEvent) => {
+            e?.preventDefault()
+            e?.stopPropagation()
+            const newErrors: Record<string, string> = {}
+            if (!props.action?.mode) {
+                if (!values.name?.trim()) {
+                    newErrors.name = t('Action name is required')
+                }
+                if (!values.commandPrompt?.trim()) {
+                    newErrors.commandPrompt = t('Command prompt is required')
+                }
+            }
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors)
+                return
+            }
+
+            setLoading(true)
+            try {
+                let action: Action
+                if (props.action) {
+                    const updateOpt: IUpdateActionOption = { ...values }
+                    if (!values.providerId) {
+                        updateOpt.clearFields = ['providerId', 'apiModel']
+                        delete updateOpt.providerId
+                        delete updateOpt.apiModel
+                    }
+                    action = await actionService.update(props.action, updateOpt)
+                } else {
+                    action = await actionService.create(values)
+                }
+                props.onSubmit(action)
+            } catch (err) {
+                console.error('Failed to save action:', err)
+                setErrors((prev) => ({
+                    ...prev,
+                    form: (err as Error)?.message || t('Failed to save action') || 'Failed to save action',
+                }))
+            } finally {
+                setLoading(false)
+            }
         },
-        [props]
+        [props, values, t]
     )
 
     const rolePlaceholdersCaption = (
@@ -124,39 +205,99 @@ export function ActionForm(props: IActionFormProps) {
         </div>
     )
 
-    const [form] = useForm()
-    const [values, setValues] = useState<ICreateActionOption | undefined>(props.action)
-    useEffect(() => {
-        setValues(props.action)
-        if (props.action) {
-            form.setFieldsValue(props.action)
-        }
-    }, [props.action, form])
-
-    const handleValuesChange = useCallback(
-        (changes: Partial<ICreateActionOption>, nextValues: ICreateActionOption) => {
-            if (changes.providerId !== undefined && changes.providerId !== values?.providerId) {
-                form.setFieldsValue({ apiModel: '' })
-                nextValues = { ...nextValues, apiModel: '' }
-            }
-            setValues(nextValues)
-        },
-        [form, values?.providerId]
-    )
-
     return (
-        <Form form={form} initialValues={values} onValuesChange={handleValuesChange} onFinish={onSubmit}>
-            {!props.action?.mode && (
+        <form
+            onSubmit={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                void handleSubmit(e)
+            }}
+        >
+            {props.action?.mode ? (
+                <div
+                    style={{
+                        padding: '14px 16px',
+                        backgroundColor: themeType === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                        border: `1px solid ${themeType === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                    }}
+                >
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontWeight: 600,
+                            fontSize: '15px',
+                        }}
+                    >
+                        {props.action.icon && (mdIcons as Record<string, IconType>)[props.action.icon] && (
+                            <span
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: theme.colors.accent,
+                                }}
+                            >
+                                {createElement((mdIcons as Record<string, IconType>)[props.action.icon], { size: 18 })}
+                            </span>
+                        )}
+                        <span>{t(props.action.name)}</span>
+                        <span
+                            style={{
+                                fontSize: '11px',
+                                background: theme.colors.backgroundTertiary,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                color: theme.colors.contentSecondary,
+                                fontWeight: 'normal',
+                            }}
+                        >
+                            {t('built-in')}
+                        </span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: theme.colors.contentSecondary, lineHeight: 1.6 }}>
+                        {t(
+                            'Prompts for built-in actions are managed by the system. You can specify a dedicated provider and model.'
+                        )}
+                    </div>
+                </div>
+            ) : (
                 <>
-                    <FormItem required name='name' label={t('Name')}>
-                        <Input size='compact' />
-                    </FormItem>
-                    <FormItem required name='icon' label={t('Icon')}>
-                        <IconPicker />
-                    </FormItem>
-                    <FormItem name='rolePrompt' label={`${t('Role Prompt')} (Optional)`} caption={rolePromptCaption}>
+                    <div className={styles.formItem}>
+                        <div className={styles.label}>
+                            {t('Name')}
+                            <span className={styles.requiredMark}>*</span>
+                        </div>
+                        <Input
+                            size='compact'
+                            value={values.name}
+                            onChange={(e) => handleChange('name', e.currentTarget.value)}
+                        />
+                        {errors.name && <div className={styles.errorMessage}>{errors.name}</div>}
+                    </div>
+
+                    <div className={styles.formItem}>
+                        <div className={styles.label}>
+                            {t('Icon')}
+                            <span className={styles.requiredMark}>*</span>
+                        </div>
+                        <IconPicker value={values.icon} onChange={(icon) => handleChange('icon', icon)} />
+                    </div>
+
+                    <div className={styles.formItem}>
+                        <div className={styles.label}>{`${t('Role Prompt')} (Optional)`}</div>
                         <Textarea
                             rows={4}
+                            size='compact'
+                            resize='vertical'
+                            value={values.rolePrompt}
+                            onChange={(e) => handleChange('rolePrompt', e.currentTarget.value)}
                             overrides={{
                                 Root: {
                                     style: {
@@ -164,13 +305,21 @@ export function ActionForm(props: IActionFormProps) {
                                     },
                                 },
                             }}
-                            size='compact'
-                            resize='vertical'
                         />
-                    </FormItem>
-                    <FormItem required name='commandPrompt' label={t('Command Prompt')} caption={commandPromptCaption}>
+                        <div className={styles.caption}>{rolePromptCaption}</div>
+                    </div>
+
+                    <div className={styles.formItem}>
+                        <div className={styles.label}>
+                            {t('Command Prompt')}
+                            <span className={styles.requiredMark}>*</span>
+                        </div>
                         <Textarea
                             rows={4}
+                            size='compact'
+                            resize='vertical'
+                            value={values.commandPrompt}
+                            onChange={(e) => handleChange('commandPrompt', e.currentTarget.value)}
                             overrides={{
                                 Root: {
                                     style: {
@@ -178,23 +327,40 @@ export function ActionForm(props: IActionFormProps) {
                                     },
                                 },
                             }}
-                            size='compact'
-                            resize='vertical'
                         />
-                    </FormItem>
-                    <FormItem name='outputRenderingFormat' label={t('Output rendering format')}>
-                        <RenderingFormatSelector />
-                    </FormItem>
+                        {errors.commandPrompt && <div className={styles.errorMessage}>{errors.commandPrompt}</div>}
+                        <div className={styles.caption}>{commandPromptCaption}</div>
+                    </div>
+
+                    <div className={styles.formItem}>
+                        <div className={styles.label}>{t('Output rendering format')}</div>
+                        <RenderingFormatSelector
+                            value={values.outputRenderingFormat}
+                            onChange={(format) => handleChange('outputRenderingFormat', format)}
+                        />
+                    </div>
                 </>
             )}
-            <FormItem name='providerId' label={`${t('Action Provider')} (Optional)`}>
-                <ProviderSelector />
-            </FormItem>
+
+            <div className={styles.formItem}>
+                <div className={styles.label}>{`${t('Action Provider')} (Optional)`}</div>
+                <ProviderSelector
+                    value={values.providerId}
+                    onChange={(providerId) => handleChange('providerId', providerId)}
+                />
+            </div>
+
             {values?.providerId && (
-                <FormItem name='apiModel' label={`${t('Action Model')} (Optional)`}>
-                    <ActionModelSelector providerId={values.providerId} />
-                </FormItem>
+                <div className={styles.formItem}>
+                    <div className={styles.label}>{`${t('Action Model')} (Optional)`}</div>
+                    <ActionModelSelector
+                        providerId={values.providerId}
+                        value={values.apiModel}
+                        onChange={(apiModel) => handleChange('apiModel', apiModel)}
+                    />
+                </div>
             )}
+
             <div
                 style={{
                     display: 'flex',
@@ -203,15 +369,26 @@ export function ActionForm(props: IActionFormProps) {
                     gap: 10,
                 }}
             >
-                <div
-                    style={{
-                        marginRight: 'auto',
+                {errors.form ? (
+                    <div className={styles.errorMessage} style={{ marginRight: 'auto' }}>
+                        {errors.form}
+                    </div>
+                ) : (
+                    <div style={{ marginRight: 'auto' }} />
+                )}
+                <Button
+                    isLoading={loading}
+                    size='compact'
+                    type='submit'
+                    onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        void handleSubmit(e)
                     }}
-                />
-                <Button isLoading={loading} size='compact'>
+                >
                     {t('Submit')}
                 </Button>
             </div>
-        </Form>
+        </form>
     )
 }

@@ -1,4 +1,4 @@
-import { Select, SelectProps } from 'baseui/select'
+import { Select, SelectProps } from './ui'
 import { ActionOutputRenderingFormat } from '../internal-services/db'
 
 export interface IRenderingFormatSelector extends Omit<SelectProps, 'value' | 'onChange'> {

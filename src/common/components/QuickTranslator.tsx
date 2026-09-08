@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { useTranslation } from 'react-i18next'
 import { RxCross2 } from 'react-icons/rx'
 import { IThemedStyleProps } from '../types'

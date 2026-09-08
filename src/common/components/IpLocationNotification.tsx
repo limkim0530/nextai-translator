@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Trans } from 'react-i18next'
-import { Notification, KIND as NOTIFICATION_KIND } from 'baseui/notification'
-import { StyledLink } from 'baseui/link'
+import { Notification, KIND as NOTIFICATION_KIND, StyledLink } from './ui'
 import { IpLocation, getIpLocationInfo } from '../geo'
 import { isUsingOpenAIOfficial } from '../providers'
 

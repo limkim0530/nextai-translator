@@ -1,5 +1,5 @@
 import React from 'react'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { RxSpeakerLoud, RxSpeakerModerate, RxSpeakerQuiet } from 'react-icons/rx'
 import { IconBaseProps } from 'react-icons'
 

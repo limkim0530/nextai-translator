@@ -1,4 +1,4 @@
-import { Input, InputProps, Size } from 'baseui/input'
+import { Input, InputProps, Size } from './ui'
 import React from 'react'
 
 export interface INumberInputProps {
@@ -11,6 +11,7 @@ export interface INumberInputProps {
     label?: string
     disabled?: boolean
     type?: 'int' | 'float'
+    onBlur?: (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void
     overrides?: InputProps['overrides']
     startEnhancer?: InputProps['startEnhancer']
     endEnhancer?: InputProps['endEnhancer']
@@ -20,6 +21,7 @@ export default function NumberInput({
     size,
     value,
     onChange,
+    onBlur,
     min,
     max,
     step,
@@ -48,6 +50,7 @@ export default function NumberInput({
             type='number'
             value={value}
             onChange={handleChange}
+            onBlur={onBlur}
             min={min}
             max={max}
             step={step}

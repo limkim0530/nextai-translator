@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Select } from 'baseui/select'
-import { Button } from 'baseui/button'
+import { Select, Button } from './ui'
 import { MdRefresh } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { useSettings } from '../hooks/useSettings'

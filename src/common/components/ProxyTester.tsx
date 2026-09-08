@@ -1,13 +1,25 @@
 import { useTranslation } from 'react-i18next'
 import { ISettings } from '../types'
-import { Button } from 'baseui/button'
-import { Notification } from 'baseui/notification'
+import { Button, Notification } from './ui'
 import { useState } from 'react'
 import { fetch } from '@tauri-apps/plugin-http'
-import ReactCountryFlag from 'react-country-flag'
 import { getFetchProxy } from '../polyfills/tauri'
 import { BsRocketTakeoff } from 'react-icons/bs'
 import { SpinnerIcon } from './SpinnerIcon'
+
+function getCountryFlagEmoji(countryCode?: string): string {
+    if (!countryCode || countryCode.length !== 2) return ''
+    try {
+        return String.fromCodePoint(
+            ...countryCode
+                .toUpperCase()
+                .split('')
+                .map((c) => 127397 + c.charCodeAt(0))
+        )
+    } catch {
+        return ''
+    }
+}
 
 interface IProxyTesterProps {
     proxy?: ISettings['proxy']
@@ -88,15 +100,7 @@ export function ProxyTester(props: IProxyTesterProps) {
                                 >
                                     <div>IP: {testResult.ip}</div>
                                     <div>
-                                        {t('Location')}:{' '}
-                                        {
-                                            <ReactCountryFlag
-                                                style={{
-                                                    verticalAlign: 'default',
-                                                }}
-                                                countryCode={testResult.countryCode}
-                                            />
-                                        }{' '}
+                                        {t('Location')}: {getCountryFlagEmoji(testResult.countryCode)}{' '}
                                         {testResult.country} {testResult.city} {testResult.org}
                                     </div>
                                     <div>

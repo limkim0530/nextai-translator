@@ -3,6 +3,7 @@ import { getSettings } from '../utils'
 import { isLocalTTSLanguage, speak as localSpeak } from './local-tts'
 import { LangCode } from '../lang'
 import * as utils from '../utils'
+import { findSpeechWordIndex } from './speech-segments'
 
 export const defaultTTSProvider: TTSProvider = 'LocalTTS'
 
@@ -140,7 +141,6 @@ export async function doSpeak({
     utterance.rate = rate
     utterance.volume = volume ? volume / 100 : 1
     if (onWordBoundary) {
-        const { findSpeechWordIndex } = await import('./speech-segments')
         utterance.addEventListener('boundary', (event) => {
             if (event.name !== 'word') {
                 return

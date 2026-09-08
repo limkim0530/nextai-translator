@@ -1,25 +1,31 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import toast from 'react-hot-toast/headless'
-import { Client as Styletron } from 'styletron-engine-atomic'
-import { Provider as StyletronProvider } from 'styletron-react'
-import { BaseProvider } from 'baseui'
-import { Textarea } from 'baseui/textarea'
-import { createUseStyles } from 'react-jss'
+import {
+    Button,
+    Textarea,
+    Select,
+    Value,
+    Option,
+    StatefulTooltip,
+    Modal,
+    ModalHeader,
+    ModalBody,
+    StatefulPopover,
+    StatefulMenu,
+} from './ui'
+import { createUseStyles } from '@/common/styles'
 import { AiOutlineFileSync } from 'react-icons/ai'
 import { IoSettingsOutline, IoChevronBackOutline, IoChevronForwardOutline } from 'react-icons/io5'
 import { TiArrowBack } from 'react-icons/ti'
 import { TbArrowsExchange, TbCsv } from 'react-icons/tb'
 import { MdOutlineGrade, MdGrade, MdHistory, MdBrowserUpdated } from 'react-icons/md'
 import * as mdIcons from 'react-icons/md'
-import { StatefulTooltip } from 'baseui/tooltip'
 import { detectLang, getLangConfig, sourceLanguages, targetLanguages, LangCode } from '../lang'
 import { translate, TranslateMode } from '../translate'
-import { Select, Value, Option } from 'baseui/select'
 import { RxEraser, RxEnter, RxReload, RxStop } from 'react-icons/rx'
 import { LuStar, LuStarOff } from 'react-icons/lu'
 import { clsx } from 'clsx'
-import { Button } from 'baseui/button'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '../components/ErrorFallback'
 import {
@@ -31,6 +37,7 @@ import {
     setSettings,
     isMacOS,
     getBrowser,
+    debounce,
 } from '../utils'
 import { InnerSettings } from './Settings'
 import { containerID, popupCardInnerContainerId } from '../../browser-extension/content_script/consts'
@@ -50,18 +57,15 @@ import { Tooltip } from './Tooltip'
 import { useSettings } from '../hooks/useSettings'
 import Vocabulary from './Vocabulary'
 import { useCollectedWordTotal } from '../hooks/useCollectedWordTotal'
-import { Modal, ModalBody, ModalHeader } from 'baseui/modal'
 import { vocabularyService } from '../services/vocabulary'
 import { Action, VocabularyItem, HistoryItem } from '../internal-services/db'
 import { CopyButton } from './CopyButton'
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useActions } from '../hooks/useActions'
 import { actionService } from '../services/action'
 import { historyService } from '../services/history'
 import { ActionManager } from './ActionManager'
 import { TranslationHistory } from './TranslationHistory'
 import { GrMoreVertical } from 'react-icons/gr'
-import { StatefulPopover } from 'baseui/popover'
-import { StatefulMenu } from 'baseui/menu'
 import { IconType } from 'react-icons'
 import { GiPlatform } from 'react-icons/gi'
 import { IoIosRocket } from 'react-icons/io'
@@ -69,7 +73,6 @@ import 'katex/dist/katex.min.css'
 import Latex from 'react-latex-next'
 import { Markdown } from './Markdown'
 import { useResizeObserver } from 'use-resize-observer'
-import _ from 'underscore'
 import { ProviderIcon } from './ProviderIcon'
 import { GlobalSuspense } from './GlobalSuspense'
 import { useLazyEffect } from '../usehooks'
@@ -80,13 +83,11 @@ import { segmentSpeechText } from '../tts/speech-segments'
 import { readFile } from '@tauri-apps/plugin-fs'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { useDeepCompareCallback } from 'use-deep-compare'
-import { useTranslatorStore, setStoreTranslatedText, setStoreIsTranslating } from '../store'
+import { useAppStore, useTranslatorStore, setStoreTranslatedText, setStoreIsTranslating } from '../store'
 import { SpeakerIcon } from './SpeakerIcon'
 import { HoverableText, WordHoverProvider } from './WordHoverCard'
 import { isProviderUsable } from '../providers'
 import color from 'color'
-import { useAtom } from 'jotai'
-import { showSettingsAtom } from '../store/setting'
 
 const cache = new LRUCache({
     max: 500,
@@ -185,12 +186,14 @@ const useStyles = createUseStyles({
         flexDirection: 'row',
         alignItems: 'center',
         gap: '4px',
+        lineHeight: 1,
     }),
     'brand': {
-        display: 'flex',
+        display: 'inline-flex',
         flexDirection: 'row',
         alignItems: 'center',
         gap: '3px',
+        lineHeight: 1,
     },
     'popupCardHeaderContainer': (props: IThemedStyleProps) =>
         props.isDesktopApp
@@ -589,7 +592,7 @@ export interface IInnerTranslatorProps {
 }
 
 export interface ITranslatorProps extends IInnerTranslatorProps {
-    engine: Styletron
+    engine?: unknown
 }
 
 // One entry in the in-session back/forward navigation stack: everything
@@ -607,35 +610,18 @@ interface INavigationEntry {
 }
 
 export function Translator(props: ITranslatorProps) {
-    const { theme } = useTheme()
-
-    if (props.openSource === 'content-script') {
-        return (
-            <ErrorBoundary FallbackComponent={ErrorFallback}>
-                <GlobalSuspense>
-                    <InnerTranslator {...props} />
-                </GlobalSuspense>
-            </ErrorBoundary>
-        )
-    }
-
     return (
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <div>
-                <StyletronProvider value={props.engine}>
-                    <BaseProvider theme={theme}>
-                        <GlobalSuspense>
-                            <InnerTranslator {...props} />
-                        </GlobalSuspense>
-                    </BaseProvider>
-                </StyletronProvider>
-            </div>
+            <GlobalSuspense>
+                <InnerTranslator {...props} />
+            </GlobalSuspense>
         </ErrorBoundary>
     )
 }
 
 function InnerTranslator(props: IInnerTranslatorProps) {
-    const [showSettings, setShowSettings] = useAtom(showSettingsAtom)
+    const showSettings = useAppStore((state) => state.showSettings)
+    const setShowSettings = useAppStore((state) => state.setShowSettings)
 
     // The height-capped card the content script (and the userscript, which shares
     // its entry) mounts into, as opposed to a window that scrolls on its own.
@@ -850,18 +836,27 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         return activateAction.mode
     }, [activateAction])
 
-    useLiveQuery(async () => {
+    useEffect(() => {
         if (settings?.defaultTranslateMode && settings.defaultTranslateMode !== 'nop') {
-            let action: Action | undefined
-            const actionID = parseInt(settings.defaultTranslateMode, 10)
-            if (isNaN(actionID)) {
-                action = await actionService.getByMode(settings.defaultTranslateMode)
-            } else {
-                action = await actionService.get(actionID)
+            let active = true
+            const loadAction = async () => {
+                let action: Action | undefined
+                const actionID = parseInt(settings.defaultTranslateMode, 10)
+                if (isNaN(actionID)) {
+                    action = await actionService.getByMode(settings.defaultTranslateMode)
+                } else {
+                    action = await actionService.get(actionID)
+                }
+                if (active && action) {
+                    setActivateAction(action)
+                }
             }
-            setActivateAction(action)
+            loadAction().catch(console.error)
+            return () => {
+                active = false
+            }
         }
-    }, [settings.defaultTranslateMode])
+    }, [settings?.defaultTranslateMode])
 
     const headerRef = useRef<HTMLDivElement>(null)
     const { width: headerWidth = 0 } = useResizeObserver<HTMLDivElement>({ ref: headerRef })
@@ -928,13 +923,22 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         }
     }, [hasActivateAction, headerWidth, languagesSelectorWidth, headerActionButtonsWidth, showLogo])
 
-    const actions = useLiveQuery(() => actionService.list(), [refreshActionsFlag])
+    const actions = useActions(refreshActionsFlag)
 
     useEffect(() => {
-        if (!activateAction) {
+        if (!actions || actions.length === 0) {
             return
         }
-        if (!actions) {
+        if (!activateAction) {
+            const defaultMode = settings?.defaultTranslateMode || 'translate'
+            const defaultAction =
+                actions.find((a) => a.mode === defaultMode) ??
+                actions.find((a) => String(a.id) === defaultMode) ??
+                actions.find((a) => a.mode === 'translate') ??
+                actions[0]
+            if (defaultAction) {
+                setActivateAction(defaultAction)
+            }
             return
         }
         setActivateAction(
@@ -942,7 +946,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                 action.id !== undefined ? action.id === activateAction.id : action.mode === activateAction.mode
             )
         )
-    }, [actions, activateAction])
+    }, [actions, activateAction, settings?.defaultTranslateMode])
 
     const [displayedActions, setDisplayedActions] = useState<Action[]>([])
     const [hiddenActions, setHiddenActions] = useState<Action[]>([])
@@ -1201,7 +1205,14 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         setIsLoading(false)
     }, [])
     const [sourceLang, setSourceLang] = useState<LangCode>('en')
-    const [targetLang, setTargetLang] = useState<LangCode>()
+    const [targetLang, setTargetLang] = useState<LangCode | undefined>(
+        () => (settings?.defaultTargetLanguage as LangCode | undefined) ?? 'zh-Hans'
+    )
+    useEffect(() => {
+        if (!targetLang && settings?.defaultTargetLanguage) {
+            setTargetLang(settings.defaultTargetLanguage as LangCode)
+        }
+    }, [settings?.defaultTargetLanguage, targetLang])
     useEffect(() => {
         targetLangRef.current = targetLang
     }, [targetLang])
@@ -1261,7 +1272,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             return maxHeight - headerHeight - editorHeight - actionButtonsHeight - paddingVertical
         }
 
-        const resizeHandle: ResizeObserverCallback = _.debounce(() => {
+        const resizeHandle: ResizeObserverCallback = debounce(() => {
             // Listen for element height changes
             const $translatedContent = translatedContentRef.current
             if ($translatedContent) {
@@ -1873,11 +1884,8 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                 // Create the worker only after validation and always
                 // terminate it: leaked Tesseract workers keep pumping
                 // messages and pile up listeners, dragging the whole UI.
-                const worker = await createWorker()
+                const worker = await createWorker('eng+chi_sim+chi_tra+jpn+rus+kor')
                 try {
-                    await worker.loadLanguage('eng+chi_sim+chi_tra+jpn+rus+kor')
-                    await worker.initialize('eng+chi_sim+chi_tra+jpn+rus+kor')
-
                     const { data } = await worker.recognize(file)
 
                     if (activateAction) {
@@ -1926,11 +1934,8 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         // Create the worker only after validation and always terminate it:
         // leaked Tesseract workers keep pumping messages and pile up
         // listeners, dragging the whole UI.
-        const worker = await createWorker()
+        const worker = await createWorker('eng+chi_sim+chi_tra+jpn+rus+kor')
         try {
-            await worker.loadLanguage('eng+chi_sim+chi_tra+jpn+rus+kor')
-            await worker.initialize('eng+chi_sim+chi_tra+jpn+rus+kor')
-
             const { data } = await worker.recognize(file)
 
             if (activateAction) {
@@ -2325,9 +2330,13 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                             }}
                                         >
                                             {action.icon &&
-                                                React.createElement(mdIcons[action.icon as keyof typeof mdIcons], {
-                                                    size: 15,
-                                                })}
+                                                (mdIcons as Record<string, IconType>)[action.icon] &&
+                                                React.createElement(
+                                                    (mdIcons as Record<string, IconType>)[action.icon],
+                                                    {
+                                                        size: 15,
+                                                    }
+                                                )}
                                             {action.id === activateAction?.id && (
                                                 <div
                                                     style={{
@@ -2385,7 +2394,8 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                                     gap: 6,
                                                                 }}
                                                             >
-                                                                {action.icon
+                                                                {action.icon &&
+                                                                (mdIcons as Record<string, IconType>)[action.icon]
                                                                     ? React.createElement(
                                                                           (mdIcons as Record<string, IconType>)[
                                                                               action.icon
@@ -2505,7 +2515,8 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                 },
                                                 InputContainer: {
                                                     style: settings.enableBackgroundBlur
-                                                        ? ({ $theme, $isFocused }) => ({
+                                                        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                          ({ $theme, $isFocused }: any) => ({
                                                               background:
                                                                   ($isFocused
                                                                       ? $theme.colors.backgroundSecondary
@@ -2525,7 +2536,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                             currentTranslateMode === 'explain-code'
                                                                 ? 'monospace'
                                                                 : 'inherit',
-                                                        textalign: 'start',
+                                                        textAlign: 'start',
                                                     },
                                                 },
                                             }}
@@ -3135,15 +3146,31 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                     )}
                     {!showSettings && (
                         <div className={styles.poweredBy}>
-                            Powered by{' '}
+                            <span style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>
+                                Powered by
+                            </span>
                             <div className={styles.brand}>
-                                {effectiveProvider && <ProviderIcon provider={effectiveProvider} size={11} />}
-                                {effectiveProvider?.name ?? t('No provider')}
+                                {effectiveProvider && (
+                                    <ProviderIcon
+                                        provider={effectiveProvider}
+                                        size={11}
+                                        style={{ transform: 'translateY(0.5px)' }}
+                                    />
+                                )}
+                                <span style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>
+                                    {effectiveProvider?.name ?? t('No provider')}
+                                </span>
                             </div>
-                            {effectiveProvider?.model && ` ${effectiveProvider.model}`}
-                            {effectiveProvider?.reasoning &&
-                                effectiveProvider.reasoning !== 'provider-default' &&
-                                ` · ${effectiveProvider.reasoning}`}
+                            {effectiveProvider?.model && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>
+                                    {effectiveProvider.model}
+                                </span>
+                            )}
+                            {effectiveProvider?.reasoning && effectiveProvider.reasoning !== 'provider-default' && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>
+                                    {`· ${effectiveProvider.reasoning}`}
+                                </span>
+                            )}
                         </div>
                     )}
                     {!showSettings && props.openSource !== 'content-script' && (

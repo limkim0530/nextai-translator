@@ -33,7 +33,7 @@ export function SpeakerIcon({
 }: ISpeakerIconProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [isSpeaking, setIsSpeaking] = useState(false)
-    const stopRef = useRef<() => void>()
+    const stopRef = useRef<(() => void) | undefined>(undefined)
     const iconSize = iconProps.size ?? '1em'
 
     useEffect(() => {

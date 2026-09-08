@@ -1,18 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
-import { Button } from 'baseui/button'
+import { Button, Select, StatefulTooltip } from './ui'
 import { useTheme } from '../hooks/useTheme'
-import { createUseStyles } from 'react-jss'
-import { StatefulTooltip } from 'baseui/tooltip'
+import { createUseStyles } from '@/common/styles'
 import { IThemedStyleProps } from '../types'
 import { MdOutlineGrade, MdGrade } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { FaDice } from 'react-icons/fa'
 import { AiOutlineCloseCircle } from 'react-icons/ai'
-import { Select } from 'baseui/select'
 import { FcIdea } from 'react-icons/fc'
 import { toast } from './Toaster'
 import { translate } from '../translate'
-import CopyToClipboard from 'react-copy-to-clipboard'
 import { RxCopy } from 'react-icons/rx'
 import { format } from 'date-fns'
 import { useCollectedWordTotal } from '../hooks/useCollectedWordTotal'
@@ -246,7 +243,7 @@ const Vocabulary = (props: IVocabularyProps) => {
         return sourceLang
     }, [selectedWord])
 
-    const articleUsedWord = useRef<string[]>()
+    const articleUsedWord = useRef<string[] | undefined>(undefined)
     const { collectedWordTotal, setCollectedWordTotal } = useCollectedWordTotal()
 
     const checkCollection = useCallback(async () => {
@@ -518,21 +515,24 @@ const Vocabulary = (props: IVocabularyProps) => {
                         </div>
                     </Tooltip>
                     <Tooltip content={t('Copy to clipboard')} showArrow placement='left'>
-                        <div>
-                            <CopyToClipboard
-                                text={articleTxt.current}
-                                onCopy={() => {
+                        <div
+                            className={styles.actionButton}
+                            onClick={async () => {
+                                try {
+                                    await navigator.clipboard.writeText(articleTxt.current)
                                     toast(t('Copy to clipboard'), {
                                         duration: 3000,
                                         icon: '👏',
                                     })
-                                }}
-                                options={{ format: 'text/plain' }}
-                            >
-                                <div className={styles.actionButton}>
-                                    <RxCopy size={13} />
-                                </div>
-                            </CopyToClipboard>
+                                } catch (error) {
+                                    console.error(error)
+                                    toast(t('Copy failed'), {
+                                        duration: 3000,
+                                    })
+                                }
+                            }}
+                        >
+                            <RxCopy size={13} />
                         </div>
                     </Tooltip>
                 </div>

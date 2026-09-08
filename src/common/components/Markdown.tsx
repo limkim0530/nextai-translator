@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from './CodeBlock'
@@ -47,7 +48,7 @@ export function Markdown({
         if (!renderText) return {}
         const renderChildren = (value: ReactNode) =>
             Children.map(value, (child) => (typeof child === 'string' ? renderText(child) : child))
-        const withRenderedText = (tag: keyof JSX.IntrinsicElements) => {
+        const withRenderedText = (tag: string) => {
             return function RenderedTextElement(componentProps: MarkdownElementProps) {
                 const { children: elementChildren } = componentProps
                 const props = { ...componentProps }
@@ -111,12 +112,12 @@ export function Markdown({
             components={{
                 ...renderedTextComponents,
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                p({ node, children, ...props }) {
-                    return <p {...props}>{renderPhonetics(children)}</p>
+                p({ node, children, ...props }: any) {
+                    return <p {...props}>{renderPhonetics(children as ReactNode)}</p>
                 },
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                li({ node, children, ...props }) {
-                    return <li {...props}>{renderPhonetics(children)}</li>
+                li({ node, children, ...props }: any) {
+                    return <li {...props}>{renderPhonetics(children as ReactNode)}</li>
                 },
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 a({ node, className, children, ...props }) {
@@ -127,8 +128,10 @@ export function Markdown({
                     return <a {...newProps}>{children}</a>
                 },
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                code({ node, inline, className, children, ...props }) {
-                    if (inline) {
+                code({ node, className, children, ...props }: any) {
+                    const match = /language-(\w+)/.exec(className || '')
+                    const isInline = !match && !String(children).includes('\n')
+                    if (isInline) {
                         return (
                             <code
                                 {...props}
@@ -144,16 +147,11 @@ export function Markdown({
                             </code>
                         )
                     }
-                    const match = /language-(\w+)/.exec(className || '')
-                    let language = 'text'
-                    if (match) {
-                        language = match[1]
-                    }
-                    const code = (children as string[])[0]
-                    return <CodeBlock code={code} language={language} />
+                    const codeString = Array.isArray(children) ? String(children[0] ?? '') : String(children ?? '')
+                    return <CodeBlock code={codeString} language={match ? match[1] : 'text'} />
                 },
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                table({ node, children, ...props }) {
+                table({ node, children, ...props }: any) {
                     return (
                         <table
                             {...props}
@@ -168,7 +166,7 @@ export function Markdown({
                     )
                 },
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                th({ node, isHeader, children, ...props }) {
+                th({ node, children, ...props }: any) {
                     return (
                         <th
                             {...props}
@@ -184,7 +182,7 @@ export function Markdown({
                     )
                 },
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                td({ node, isHeader, children, ...props }) {
+                td({ node, children, ...props }: any) {
                     return (
                         <td {...props} style={tableCellStyle}>
                             {renderCellText(children)}

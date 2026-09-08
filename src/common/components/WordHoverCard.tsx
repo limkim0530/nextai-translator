@@ -11,7 +11,7 @@ import {
     useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { RxArrowRight, RxExternalLink } from 'react-icons/rx'
 import { useTranslation } from 'react-i18next'
 import { IThemedStyleProps } from '../types'
@@ -241,8 +241,8 @@ export function WordHoverProvider({ children, enabled = true, onOpenDetails }: W
     const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle')
     const [position, setPosition] = useState({ left: VIEWPORT_PADDING, top: VIEWPORT_PADDING })
     const cardRef = useRef<HTMLDivElement>(null)
-    const showTimerRef = useRef<ReturnType<typeof setTimeout>>()
-    const hideTimerRef = useRef<ReturnType<typeof setTimeout>>()
+    const showTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+    const hideTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
     const clearTimers = useCallback(() => {
         clearTimeout(showTimerRef.current)

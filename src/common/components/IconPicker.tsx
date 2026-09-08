@@ -1,11 +1,18 @@
 import { IconType } from 'react-icons'
 import * as mdIcons from 'react-icons/md'
-import { createUseStyles } from 'react-jss'
-import { Button } from 'baseui/button'
-import { useEffect, useState, createElement, useMemo } from 'react'
-import { VariableSizeGrid as Grid } from 'react-window'
-import { Input } from 'baseui/input'
+import { createUseStyles } from '@/common/styles'
+import { Button, Input } from './ui'
+import { useEffect, useState, useMemo } from 'react'
+import { Grid, type CellComponentProps } from 'react-window'
 import { useTranslation } from 'react-i18next'
+import { DEFAULT_ACTION_ICON } from '../constants'
+
+const getValidIconName = (name?: string): string => {
+    if (name && (mdIcons as Record<string, IconType>)[name]) {
+        return name
+    }
+    return DEFAULT_ACTION_ICON
+}
 
 const useStyles = createUseStyles({
     root: {},
@@ -32,11 +39,11 @@ export interface IIconPickerProps {
 export function IconPicker({ value, onChange }: IIconPickerProps) {
     const { t } = useTranslation()
     const [showIcons, setShowIcons] = useState(false)
-    const [currentValue, setCurrentValue] = useState(value ?? 'MdMusicVideo')
+    const [currentValue, setCurrentValue] = useState(() => getValidIconName(value))
 
     useEffect(() => {
         if (value) {
-            setCurrentValue(value)
+            setCurrentValue(getValidIconName(value))
         }
     }, [value])
 
@@ -58,6 +65,7 @@ export function IconPicker({ value, onChange }: IIconPickerProps) {
     }, [searchText])
 
     const styles = useStyles()
+    const CurrentIcon = (mdIcons as Record<string, IconType>)[getValidIconName(currentValue)]
 
     return (
         <div className={styles.root}>
@@ -70,7 +78,7 @@ export function IconPicker({ value, onChange }: IIconPickerProps) {
                     setShowIcons((v) => !v)
                 }}
             >
-                {createElement((mdIcons as Record<string, IconType>)[currentValue] as IconType, { size: 16 })}
+                <CurrentIcon size={16} />
             </Button>
             {showIcons && (
                 <div className={styles.icons}>
@@ -110,19 +118,21 @@ export function IconPicker({ value, onChange }: IIconPickerProps) {
                         </Button>
                     </div>
                     <Grid
-                        height={250}
-                        width={400}
-                        rowHeight={() => 40}
-                        columnWidth={() => 40}
-                        rowCount={Math.round(iconNames.length / 10)}
+                        style={{ height: 250, width: 400 }}
+                        rowHeight={40}
+                        columnWidth={40}
+                        rowCount={Math.ceil(iconNames.length / 10)}
                         columnCount={10}
-                    >
-                        {({ columnIndex, rowIndex, style }) => {
+                        cellProps={{}}
+                        cellComponent={({ columnIndex, rowIndex, style }: CellComponentProps) => {
                             const key = iconNames[rowIndex * 10 + columnIndex]
                             if (!key) {
                                 return null
                             }
                             const Icon = (mdIcons as Record<string, IconType>)[key] as IconType
+                            if (!Icon) {
+                                return null
+                            }
                             return (
                                 <div key={key} style={style}>
                                     <Button
@@ -140,7 +150,7 @@ export function IconPicker({ value, onChange }: IIconPickerProps) {
                                 </div>
                             )
                         }}
-                    </Grid>
+                    />
                 </div>
             )}
         </div>

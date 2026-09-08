@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { useState } from 'react'
+import { useState, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { act } from 'react-dom/test-utils'
-import { Provider as StyletronProvider } from 'styletron-react'
-import { Client as Styletron } from 'styletron-engine-atomic'
-import { BaseProvider, LightTheme } from 'baseui'
-import { Combobox } from 'baseui/combobox'
+import { Combobox } from './ui'
 import { filterModelOptions } from './model-option-filter'
 
 interface Option {
@@ -79,13 +75,7 @@ describe('model combobox selection', () => {
         const onCommit = vi.fn()
 
         await act(async () => {
-            createRoot(container).render(
-                <StyletronProvider value={new Styletron()}>
-                    <BaseProvider theme={LightTheme}>
-                        <ModelCombobox onCommit={onCommit} />
-                    </BaseProvider>
-                </StyletronProvider>
-            )
+            createRoot(container).render(<ModelCombobox onCommit={onCommit} />)
         })
 
         const input = container.querySelector('input') as HTMLInputElement

@@ -1,21 +1,26 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import _ from 'underscore'
-import { Tabs, Tab, StyledTabList, StyledTabPanel } from 'baseui/tabs-motion'
 import icon from '../assets/images/icon-large.png'
 import beams from '../assets/images/beams.jpg'
 import * as utils from '../utils'
-import { Client as Styletron } from 'styletron-engine-atomic'
-import { Provider as StyletronProvider } from 'styletron-react'
-import { BaseProvider } from 'baseui'
-import { Input } from 'baseui/input'
 import { createForm } from './Form'
 import { TranslateMode } from '../translate'
-import { Button, ButtonProps } from 'baseui/button'
-import { Select, Value, Option } from 'baseui/select'
-import { Checkbox } from 'baseui/checkbox'
+import {
+    Button,
+    ButtonProps,
+    Input,
+    Select,
+    Value,
+    Option,
+    Checkbox,
+    Slider,
+    Textarea,
+    Tabs,
+    Tab,
+    Skeleton,
+} from './ui'
 import { LangCode, supportedLanguages } from '../lang'
 import { useRecordHotkeys } from 'react-hotkeys-hook'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import clsx from 'clsx'
 import { ISettings, IThemedStyleProps, LanguageDetectionEngine, ProxyProtocol, ThemeType } from '../types'
 import { useTheme } from '../hooks/useTheme'
@@ -31,9 +36,7 @@ import { TTSProvider } from '../tts/types'
 import { fetchEdgeVoices } from '../tts/edge-tts'
 import { fetchLocalVoices } from '../tts/local-tts'
 import { useThemeType } from '../hooks/useThemeType'
-import { Slider } from 'baseui/slider'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { actionService } from '../services/action'
+import { useActions } from '../hooks/useActions'
 import { GlobalSuspense } from './GlobalSuspense'
 
 import { ProviderManager } from './ProviderManager'
@@ -42,16 +45,13 @@ import { validateProviders, type ProviderConfig } from '../providers'
 import type { DictionaryProviderConfig } from '../dictionary/types'
 import { PiTextbox } from 'react-icons/pi'
 import { BsKeyboard } from 'react-icons/bs'
-import { Cell, Grid } from 'baseui/layout-grid'
 
 import useSWR from 'swr'
 
-import { Skeleton } from 'baseui/skeleton'
 import { SpeakerIcon } from './SpeakerIcon'
 import Toaster, { toast } from './Toaster'
 import { RxSpeakerLoud } from 'react-icons/rx'
 
-import { Textarea } from 'baseui/textarea'
 import { ProxyTester } from './ProxyTester'
 import { isMacOS } from '../utils'
 import NumberInput from './NumberInput'
@@ -104,7 +104,7 @@ interface ITranslateModeSelectorProps {
 }
 
 function TranslateModeSelector({ value, onChange, onBlur }: ITranslateModeSelectorProps) {
-    const actions = useLiveQuery(() => actionService.list())
+    const actions = useActions()
     const { t } = useTranslation()
 
     return (
@@ -755,15 +755,17 @@ function Ii18nSelector({ value, onChange, onBlur }: Ii18nSelectorProps) {
 
 interface AutoTranslateCheckboxProps {
     value?: boolean
+    checked?: boolean
     onChange?: (value: boolean) => void
     onBlur?: () => void
 }
 
-function AutoTranslateCheckbox({ value, onChange, onBlur }: AutoTranslateCheckboxProps) {
+function AutoTranslateCheckbox({ value, checked, onChange, onBlur }: AutoTranslateCheckboxProps) {
+    const isChecked = checked ?? value ?? false
     return (
         <Checkbox
             checkmarkType='toggle_round'
-            checked={value}
+            checked={isChecked}
             onChange={(e) => {
                 onChange?.(e.target.checked)
                 onBlur?.()
@@ -774,15 +776,17 @@ function AutoTranslateCheckbox({ value, onChange, onBlur }: AutoTranslateCheckbo
 
 interface MyCheckboxProps {
     value?: boolean
+    checked?: boolean
     onChange?: (value: boolean) => void
     onBlur?: () => void
 }
 
-function MyCheckbox({ value, onChange, onBlur }: MyCheckboxProps) {
+function MyCheckbox({ value, checked, onChange, onBlur }: MyCheckboxProps) {
+    const isChecked = checked ?? value ?? false
     return (
         <Checkbox
             checkmarkType='toggle_round'
-            checked={value}
+            checked={isChecked}
             onChange={(e) => {
                 onChange?.(e.target.checked)
                 onBlur?.()
@@ -793,15 +797,17 @@ function MyCheckbox({ value, onChange, onBlur }: MyCheckboxProps) {
 
 interface RestorePreviousPositionCheckboxProps {
     value?: boolean
+    checked?: boolean
     onChange?: (value: boolean) => void
     onBlur?: () => void
 }
 
-function RestorePreviousPositionCheckbox({ value, onChange, onBlur }: RestorePreviousPositionCheckboxProps) {
+function RestorePreviousPositionCheckbox({ value, checked, onChange, onBlur }: RestorePreviousPositionCheckboxProps) {
+    const isChecked = checked ?? value ?? false
     return (
         <Checkbox
             checkmarkType='toggle_round'
-            checked={value}
+            checked={isChecked}
             onChange={(e) => {
                 onChange?.(e.target.checked)
                 onBlur?.()
@@ -811,15 +817,17 @@ function RestorePreviousPositionCheckbox({ value, onChange, onBlur }: RestorePre
 }
 interface SelectInputElementsProps {
     value?: boolean
+    checked?: boolean
     onChange?: (value: boolean) => void
     onBlur?: () => void
 }
 
-function SelectInputElementsCheckbox({ value, onChange, onBlur }: SelectInputElementsProps) {
+function SelectInputElementsCheckbox({ value, checked, onChange, onBlur }: SelectInputElementsProps) {
+    const isChecked = checked ?? value ?? false
     return (
         <Checkbox
             checkmarkType='toggle_round'
-            checked={value}
+            checked={isChecked}
             onChange={(e) => {
                 onChange?.(e.target.checked)
                 onBlur?.()
@@ -830,19 +838,22 @@ function SelectInputElementsCheckbox({ value, onChange, onBlur }: SelectInputEle
 
 interface ReadSelectedWordsFromInputElementsProps {
     value?: boolean
+    checked?: boolean
     onChange?: (value: boolean) => void
     onBlur?: () => void
 }
 
 function ReadSelectedWordsFromInputElementsCheckbox({
     value,
+    checked,
     onChange,
     onBlur,
 }: ReadSelectedWordsFromInputElementsProps) {
+    const isChecked = checked ?? value ?? false
     return (
         <Checkbox
             checkmarkType='toggle_round'
-            checked={value}
+            checked={isChecked}
             onChange={(e) => {
                 onChange?.(e.target.checked)
                 onBlur?.()
@@ -853,15 +864,17 @@ function ReadSelectedWordsFromInputElementsCheckbox({
 
 interface RunAtStartupCheckboxProps {
     value?: boolean
+    checked?: boolean
     onChange?: (value: boolean) => void
     onBlur?: () => void
 }
 
-function RunAtStartupCheckbox({ value, onChange, onBlur }: RunAtStartupCheckboxProps) {
+function RunAtStartupCheckbox({ value, checked, onChange, onBlur }: RunAtStartupCheckboxProps) {
+    const isChecked = checked ?? value ?? false
     return (
         <Checkbox
             checkmarkType='toggle_round'
-            checked={value}
+            checked={isChecked}
             onChange={(e) => {
                 onChange?.(e.target.checked)
                 onBlur?.()
@@ -872,15 +885,17 @@ function RunAtStartupCheckbox({ value, onChange, onBlur }: RunAtStartupCheckboxP
 
 interface UseCompactLookupCheckboxProps {
     value?: boolean
+    checked?: boolean
     onChange?: (value: boolean) => void
     onBlur?: () => void
 }
 
-function UseCompactLookupCheckbox({ value, onChange, onBlur }: UseCompactLookupCheckboxProps) {
+function UseCompactLookupCheckbox({ value, checked, onChange, onBlur }: UseCompactLookupCheckboxProps) {
+    const isChecked = checked ?? value ?? false
     return (
         <Checkbox
             checkmarkType='toggle_round'
-            checked={value}
+            checked={isChecked}
             onChange={(e) => {
                 onChange?.(e.target.checked)
                 onBlur?.()
@@ -1059,41 +1074,7 @@ function HotkeyRecorder({ value, onChange, onBlur, testId }: IHotkeyRecorderProp
     )
 }
 
-interface IProviderSelectorProps {
-    value?: string
-    onChange?: (value: string) => void
-}
-
-/**
- * Picks one of the user's configured provider instances by id.
- *
- * Ids rather than vendor names, so an action can target one of several
- * instances of the same vendor — a second key, a different endpoint, or the
- * same model at a different thinking level.
- */
-export function ProviderSelector({ value, onChange }: IProviderSelectorProps) {
-    const { t } = useTranslation()
-    const { settings } = useSettings()
-
-    const options = (settings?.providers ?? []).map((provider) => ({
-        id: provider.id,
-        label: provider.model ? `${provider.name} · ${provider.model}` : provider.name,
-    }))
-
-    return (
-        <Select
-            size='compact'
-            searchable={false}
-            clearable
-            placeholder={options.length ? t('Use the default provider') : t('No providers configured')}
-            value={value ? [{ id: value }] : []}
-            onChange={(params) => {
-                onChange?.(String(params.value[0]?.id ?? ''))
-            }}
-            options={options}
-        />
-    )
-}
+export { ProviderSelector, type IProviderSelectorProps } from './ProviderSelector'
 
 const { Form, FormItem, useForm } = createForm<ISettings>()
 
@@ -1103,19 +1084,14 @@ interface IInnerSettingsProps {
 }
 
 interface ISettingsProps extends IInnerSettingsProps {
-    engine: Styletron
+    engine?: unknown
 }
 
-export function Settings({ engine, ...props }: ISettingsProps) {
-    const { theme } = useTheme()
+export function Settings(props: ISettingsProps) {
     return (
-        <StyletronProvider value={engine}>
-            <BaseProvider theme={theme}>
-                <GlobalSuspense>
-                    <InnerSettings {...props} />
-                </GlobalSuspense>
-            </BaseProvider>
-        </StyletronProvider>
+        <GlobalSuspense>
+            <InnerSettings {...props} />
+        </GlobalSuspense>
     )
 }
 
@@ -1179,7 +1155,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                 // must never clobber unsaved in-progress edits: overwriting
                 // `values` here resets the whole form, which reverted a model
                 // picked in the combobox back to its stored value.
-                if (!_.isEqual(valuesRef.current, prevValuesRef.current)) {
+                if (!utils.isEqual(valuesRef.current, prevValuesRef.current)) {
                     return
                 }
                 setValues(settings)
@@ -1205,7 +1181,11 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
      * because `setSettings` writes a partial.
      */
     const onChange = useCallback((_changes: Partial<ISettings>, values_: ISettings) => {
-        setValues((prev) => ({ ...prev, ...values_ }))
+        setValues((prev) => {
+            const next = { ...prev, ...values_ }
+            valuesRef.current = next
+            return next
+        })
     }, [])
 
     /**
@@ -1222,6 +1202,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
             form.setFieldsValue({ providers, defaultProviderId: nextDefault })
             setValues((prev) => {
                 const next = { ...prev, providers, defaultProviderId: nextDefault }
+                valuesRef.current = next
                 if (validateProviders(providers).length === 0) {
                     void utils.setSettings({ providers, defaultProviderId: nextDefault })
                     setShowProviderErrors(false)
@@ -1245,6 +1226,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                     providers,
                     defaultProviderId: nextDefault,
                 }
+                valuesRef.current = { ...prev, dictionary: nextDict }
                 form.setFieldsValue({ dictionary: nextDict })
                 void utils.setSettings({ dictionary: nextDict })
                 return { ...prev, dictionary: nextDict }
@@ -1262,6 +1244,7 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                     providers: prev.dictionary?.providers ?? [],
                     defaultProviderId: prev.dictionary?.defaultProviderId,
                 }
+                valuesRef.current = { ...prev, dictionary: nextDict }
                 form.setFieldsValue({ dictionary: nextDict })
                 void utils.setSettings({ dictionary: nextDict })
                 return { ...prev, dictionary: nextDict }
@@ -1274,10 +1257,8 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
         async (submitted: ISettings) => {
             setLoading(true)
             const oldSettings = await utils.getSettings()
-            // Same projection as `onChange`: what the form hands back covers the
-            // rendered fields only, so save it over the state that also holds
-            // the provider list rather than in place of it.
-            const data: ISettings = { ...valuesRef.current, ...submitted }
+            const latestFromForm = form ? form.getFieldsValue() : {}
+            const data: ISettings = { ...valuesRef.current, ...latestFromForm, ...submitted }
 
             const providerErrors = validateProviders(data.providers ?? [])
             if (providerErrors.length > 0) {
@@ -1325,25 +1306,34 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
             setShowProviderErrors(false)
             setLoading(false)
             setSettings(data)
+            setValues(data)
+            setPrevValues(data)
+            valuesRef.current = data
+            prevValuesRef.current = data
             onSave?.(oldSettings)
         },
-        [isTauri, onSave, setSettings, refreshThemeType, t, trackTauriEvent]
+        [form, isTauri, onSave, setSettings, refreshThemeType, t, trackTauriEvent]
     )
 
     const onBlur = useCallback(async () => {
-        if (!_.isEqual(values, prevValues)) {
+        const currentVals = {
+            ...valuesRef.current,
+            ...(form ? form.getFieldsValue() : {}),
+        }
+        if (!utils.isEqual(currentVals, prevValuesRef.current)) {
             const dataToSave =
-                validateProviders(values.providers ?? []).length === 0
-                    ? values
+                validateProviders(currentVals.providers ?? []).length === 0
+                    ? currentVals
                     : {
-                          ...values,
-                          providers: prevValues.providers,
-                          defaultProviderId: prevValues.defaultProviderId,
+                          ...currentVals,
+                          providers: prevValuesRef.current.providers,
+                          defaultProviderId: prevValuesRef.current.defaultProviderId,
                       }
             await utils.setSettings(dataToSave)
-            setPrevValues(values)
+            setPrevValues(currentVals)
+            prevValuesRef.current = currentVals
         }
-    }, [prevValues, values])
+    }, [form])
 
     const isDesktopApp = utils.isDesktopApp()
 
@@ -1415,63 +1405,10 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                     display: 'none',
                 },
             },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            component: function TabsListOverride(props: any) {
-                return (
-                    <Grid
-                        behavior='fluid'
-                        overrides={{
-                            Grid: {
-                                style: {
-                                    flexWrap: 'nowrap',
-                                    maxWidth: '100%',
-                                },
-                            },
-                        }}
-                    >
-                        <Cell
-                            span={12}
-                            overrides={{
-                                Cell: {
-                                    style: {
-                                        minWidth: 0,
-                                        maxWidth: '100%',
-                                    },
-                                },
-                            }}
-                        >
-                            <StyledTabList
-                                {...props}
-                                onWheel={(e: React.WheelEvent<HTMLDivElement>) => {
-                                    props.onWheel?.(e)
-                                    if (e.deltaY && !e.deltaX) {
-                                        e.currentTarget.scrollLeft += e.deltaY
-                                    }
-                                }}
-                            />
-                        </Cell>
-                    </Grid>
-                )
-            },
         },
     }
 
     const tabOverrides = {
-        TabPanel: {
-            style: {
-                padding: '0px',
-            },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            component: function TabsListOverride(props: any) {
-                return (
-                    <Grid>
-                        <Cell span={[1, 2, 3]}>
-                            <StyledTabPanel {...props} />
-                        </Cell>
-                    </Grid>
-                )
-            },
-        },
         Tab: {
             style: {
                 'color': theme.colors.black,
@@ -1737,14 +1674,14 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                             label={t('Font size')}
                             caption={t('Controls the font size of the input box and the translation text.')}
                         >
-                            <NumberInput min={8} max={40} step={1} />
+                            <NumberInput min={8} max={40} step={1} onBlur={onBlur} />
                         </FormItem>
                         <FormItem
                             name='uiFontSize'
                             label={t('UI font size')}
                             caption={t('Controls the font size of the app interface (toolbar, menus, labels).')}
                         >
-                            <NumberInput min={8} max={24} step={1} />
+                            <NumberInput min={8} max={24} step={1} onBlur={onBlur} />
                         </FormItem>
                         <FormItem
                             name='alwaysShowIcons'
@@ -1986,7 +1923,21 @@ export function InnerSettings({ onSave, showFooter = false }: IInnerSettingsProp
                             marginRight: 'auto',
                         }}
                     />
-                    <Button isLoading={loading} size='mini' startEnhancer={<MdSave size={14} />}>
+                    <Button
+                        type='button'
+                        isLoading={loading}
+                        size='mini'
+                        startEnhancer={<MdSave size={14} />}
+                        onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            const latest = {
+                                ...valuesRef.current,
+                                ...(form ? form.getFieldsValue() : {}),
+                            }
+                            void onSubmit(latest)
+                        }}
+                    >
                         {t('Save')}
                     </Button>
                 </div>

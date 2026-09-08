@@ -1,4 +1,5 @@
-import { Theme } from 'baseui/theme'
+import { Theme } from './theme'
+export type { Theme }
 import { TranslateMode } from './translate'
 import { TTSProvider } from './tts/types'
 import { ProviderConfig } from './providers/types'

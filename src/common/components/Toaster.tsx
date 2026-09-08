@@ -6,7 +6,7 @@ import toastHeadless, {
     type Renderable,
     type ValueOrFunction,
 } from 'react-hot-toast/headless'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import clsx from 'clsx'
 import { IoWarning, IoCheckmarkCircle, IoCloseCircle } from 'react-icons/io5'
 import { useTheme } from '../hooks/useTheme'

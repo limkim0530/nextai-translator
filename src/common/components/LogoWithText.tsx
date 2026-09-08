@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { IThemedStyleProps } from '../types'
 import { useTheme } from '../hooks/useTheme'
 import { getAssetUrl } from '../utils'
