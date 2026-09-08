@@ -4,16 +4,8 @@ import { InlineLookup } from '../../common/components/InlineLookup'
 import { commands } from '../bindings'
 import '../../common/i18n.js'
 import { useTheme } from '../../common/hooks/useTheme'
-import { Client as Styletron } from 'styletron-engine-atomic'
-import { Provider as StyletronProvider } from 'styletron-react'
-import { BaseProvider } from 'baseui'
-import { PREFIX } from '../../common/constants'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '../../common/components/ErrorFallback'
-
-const engine = new Styletron({
-    prefix: `${PREFIX}-styletron-`,
-})
 
 export function InlineLookupWindow() {
     const { theme } = useTheme()
@@ -78,24 +70,20 @@ export function InlineLookupWindow() {
 
     return (
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <StyletronProvider value={engine}>
-                <BaseProvider theme={theme}>
-                    <div
-                        style={{
-                            position: 'relative',
-                            background: theme.colors.backgroundPrimary,
-                            font: '14px/1.6 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"',
-                            letterSpacing: '-0.01em',
-                            WebkitFontSmoothing: 'antialiased',
-                            MozOsxFontSmoothing: 'grayscale',
-                            textRendering: 'optimizeLegibility',
-                            minHeight: '100vh',
-                        }}
-                    >
-                        <InlineLookup translatedText={translatedText} isLoading={isLoading} onClose={handleClose} />
-                    </div>
-                </BaseProvider>
-            </StyletronProvider>
+            <div
+                style={{
+                    position: 'relative',
+                    background: theme.colors.backgroundPrimary,
+                    font: '14px/1.6 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"',
+                    letterSpacing: '-0.01em',
+                    WebkitFontSmoothing: 'antialiased',
+                    MozOsxFontSmoothing: 'grayscale',
+                    textRendering: 'optimizeLegibility',
+                    minHeight: '100vh',
+                }}
+            >
+                <InlineLookup translatedText={translatedText} isLoading={isLoading} onClose={handleClose} />
+            </div>
         </ErrorBoundary>
     )
 }

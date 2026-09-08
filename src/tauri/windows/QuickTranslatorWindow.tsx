@@ -1,25 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { Client as Styletron } from 'styletron-engine-atomic'
-import { Provider as StyletronProvider } from 'styletron-react'
-import { BaseProvider } from 'baseui'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '../../common/components/ErrorFallback'
 import { GlobalSuspense } from '../../common/components/GlobalSuspense'
 import { QuickTranslator, AxContext } from '../../common/components/QuickTranslator'
-import { useTheme } from '../../common/hooks/useTheme'
-import { PREFIX } from '../../common/constants'
 import { commands } from '../bindings'
 import '../../common/i18n.js'
 
-const engine = new Styletron({
-    prefix: `${PREFIX}-styletron-`,
-})
-
 export function QuickTranslatorWindow() {
-    const { theme } = useTheme()
-
     useEffect(() => {
         document.body.style.margin = '0'
         document.body.style.background = 'transparent'
@@ -64,21 +53,15 @@ export function QuickTranslatorWindow() {
 
     return (
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <StyletronProvider value={engine}>
-                <BaseProvider theme={theme}>
-                    <GlobalSuspense>
-                        {/* This window is pre-created (hidden) at app startup; don't
-                            mount QuickTranslator — which immediately runs the context
-                            picker (AX reads, history query, model call) — until the
-                            panel is actually shown for the first time (#1883). Rust
-                            emits `quick-translator-shown` on every show, so tick > 0
-                            exactly means "has been shown at least once". */}
-                        {tick > 0 && (
-                            <QuickTranslator key={tick} fetchContext={fetchContext} onClose={hide} onHide={hide} />
-                        )}
-                    </GlobalSuspense>
-                </BaseProvider>
-            </StyletronProvider>
+            <GlobalSuspense>
+                {/* This window is pre-created (hidden) at app startup; don't
+                    mount QuickTranslator — which immediately runs the context
+                    picker (AX reads, history query, model call) — until the
+                    panel is actually shown for the first time (#1883). Rust
+                    emits `quick-translator-shown` on every show, so tick > 0
+                    exactly means "has been shown at least once". */}
+                {tick > 0 && <QuickTranslator key={tick} fetchContext={fetchContext} onClose={hide} onHide={hide} />}
+            </GlobalSuspense>
         </ErrorBoundary>
     )
 }

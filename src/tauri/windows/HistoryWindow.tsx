@@ -1,8 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { Window } from '../components/Window'
 import { TranslationHistory } from '../../common/components/TranslationHistory'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { actionService } from '../../common/services/action'
+import { useActions } from '../../common/hooks/useActions'
 import { HistoryItem } from '../../common/internal-services/db'
 import { emit } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
@@ -16,7 +15,7 @@ export function HistoryWindow() {
         trackEvent('screen_view', { name: 'History' })
     }, [])
 
-    const actions = useLiveQuery(() => actionService.list(), [])
+    const actions = useActions()
     const appWindow = WebviewWindow.getCurrent()
 
     const handleClose = useCallback(() => {

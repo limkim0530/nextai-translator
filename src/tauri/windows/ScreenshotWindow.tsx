@@ -4,7 +4,7 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { currentMonitor } from '@tauri-apps/api/window'
 import { useEffect, useRef, useState } from 'react'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { commands } from '../bindings'
 
 const useStyles = createUseStyles({

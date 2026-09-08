@@ -3,23 +3,17 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { invoke } from '@tauri-apps/api/core'
 import { Effect } from '@tauri-apps/api/window'
 import { useTheme } from '../../common/hooks/useTheme'
-import { Provider as StyletronProvider } from 'styletron-react'
-import { BaseProvider } from 'baseui'
-import { Client as Styletron } from 'styletron-engine-atomic'
-import { PREFIX } from '../../common/constants'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '../../common/components/ErrorFallback'
 import '../../common/i18n.js'
 import { useTranslation } from 'react-i18next'
 import { useSettings } from '../../common/hooks/useSettings'
 import { IThemedStyleProps } from '../../common/types'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { open } from '@tauri-apps/plugin-shell'
 import { usePinned } from '../../common/hooks/usePinned'
 import { isMacOS, isTauri, isWindows } from '@/common/utils'
-import { useSetAtom } from 'jotai'
-
-import { showSettingsAtom } from '@/common/store/setting'
+import { useAppStore } from '@/common/store'
 import { commands } from '../bindings'
 import { trackEvent } from '@aptabase/tauri'
 
@@ -35,10 +29,6 @@ window.addEventListener('error', (e) => {
     })
 })
 
-const engine = new Styletron({
-    prefix: `${PREFIX}-styletron-`,
-})
-
 export interface IWindowProps {
     isTranslatorWindow?: boolean
     windowsTitlebarDisableDarkMode?: boolean
@@ -46,9 +36,7 @@ export interface IWindowProps {
 }
 
 export function Window(props: IWindowProps) {
-    const { theme } = useTheme()
-
-    const setShowSettings = useSetAtom(showSettingsAtom)
+    const setShowSettings = useAppStore((state) => state.setShowSettings)
 
     useEffect(() => {
         async function handleKeyPress(event: KeyboardEvent) {
@@ -69,11 +57,7 @@ export function Window(props: IWindowProps) {
 
     return (
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <StyletronProvider value={engine}>
-                <BaseProvider theme={theme}>
-                    <InnerWindow {...props} />
-                </BaseProvider>
-            </StyletronProvider>
+            <InnerWindow {...props} />
         </ErrorBoundary>
     )
 }

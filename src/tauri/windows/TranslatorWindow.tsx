@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { Translator } from '../../common/components/Translator'
-import { Client as Styletron } from 'styletron-engine-atomic'
 import { listen, type Event, type UnlistenFn } from '@tauri-apps/api/event'
 import {
     bindDisplayWindowHotkey,
@@ -11,7 +10,6 @@ import {
     onSettingsSave,
 } from '../utils'
 import { v4 as uuidv4 } from 'uuid'
-import { PREFIX } from '../../common/constants'
 import { translate } from '../../common/translate'
 import { detectLang, intoLangCode } from '../../common/lang'
 import { useSettings } from '../../common/hooks/useSettings'
@@ -22,10 +20,6 @@ import { usePinned } from '../../common/hooks/usePinned'
 import { useMemoWindow } from '../../common/hooks/useMemoWindow'
 import { isMacOS } from '@/common/utils'
 import { commands } from '../bindings'
-
-const engine = new Styletron({
-    prefix: `${PREFIX}-styletron-`,
-})
 
 export function TranslatorWindow() {
     const [uuid, setUUID] = useState('')
@@ -260,7 +254,6 @@ export function TranslatorWindow() {
         <Window isTranslatorWindow windowsTitlebarDisableDarkMode={isSettingsOpen}>
             <Translator
                 uuid={uuid}
-                engine={engine}
                 showLogo={isMacOS}
                 showSettingsIcon
                 showSettings={showSettings}
