@@ -49,13 +49,10 @@ Vitest config lives in `vite.config.ts` (`root: 'src'`, jsdom). Tests sit next t
     `baseui/deprecated-component-api` (the plugin's latest release calls `context.getAncestors()`,
     removed in ESLint 9, and throws) and `@typescript-eslint/no-unused-expressions` (fires on four
     pre-existing `guard && call()` sites).
--   **`baseui` is patched** (`patches/baseui@18.2.0.patch`, wired through pnpm
-    `patchedDependencies`). `select-component.js` decides "was this click outside the menu?" from a
-    `document`-level listener, where a click that started inside the content script's shadow root
-    has already been retargeted to the shadow host — so the popup card's dropdowns dismiss
-    themselves on the first interaction. The patch reads `composedPath()[0]` instead, which is what
-    the old `baseui-sd` fork existed to add and is still not upstream (baseui fixed `popover` this
-    way but not `select`). `baseui-select-shadow-root.spec.tsx` fails if the patch goes missing.
+-   **Native `Select` inside ShadowRoot** (`select-shadow-root.spec.tsx`). The popup card
+    in the browser extension content script renders inside a ShadowRoot. The native `Select` component
+    handles outside-click detection using `composedPath()` so that clicks inside the ShadowRoot
+    do not prematurely dismiss the dropdown menu. `select-shadow-root.spec.tsx` tests this behavior.
 -   Both extension targets are built by `@crxjs/vite-plugin` (`crx()`), with `browser: 'chrome'` /
     `browser: 'firefox'` selecting the background shape — Gecko wants `background.scripts`, Chrome
     wants `background.service_worker`, and `getManifest()` in `src/browser-extension/manifest.ts`

@@ -1,6 +1,3 @@
-patchedDependencies:
-    baseui@18.2.0: patches/baseui@18.2.0.patch
-
 allowBuilds:
     core-js: false
     simple-git-hooks: true

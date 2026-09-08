@@ -1,5 +1,4 @@
 import js from '@eslint/js'
-import baseui from 'eslint-plugin-baseui'
 import prettierRecommended from 'eslint-plugin-prettier/recommended'
 import reactPlugin from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -30,7 +29,6 @@ export default tseslint.config(
         // Neither plugin ships a flat config export, so mount them by hand.
         plugins: {
             'react-hooks': reactHooks,
-            baseui,
         },
         settings: {
             'import/resolver': {
@@ -45,16 +43,6 @@ export default tseslint.config(
             'camelcase': 'error',
             'eqeqeq': ['error', 'always'],
             'no-duplicate-imports': 'error',
-            // 'baseui/deprecated-theme-api' and 'baseui/deprecated-component-api'
-            // are off because eslint-plugin-baseui 13.0.0 (its latest, 2023) calls
-            // context.getAncestors()/getScope(), both removed in ESLint 9 — the
-            // rules throw instead of reporting. deprecated-component-api only
-            // looked harmless before: it matches `startsWith('baseui/')`, so it
-            // never fired while the imports were still `baseui-sd/*`. Renaming
-            // them to the upstream package made it crash on the first baseui JSX
-            // prop. 'no-deep-imports' touches no removed API and still runs.
-            'baseui/deprecated-component-api': 'off',
-            'baseui/no-deep-imports': 'warn',
             'prettier/prettier': 'error',
             // typescript-eslint 8 added no-unused-expressions to `recommended`.
             // It fires on four pre-existing `guard && call()` short-circuits plus
