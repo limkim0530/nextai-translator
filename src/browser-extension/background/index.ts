@@ -1,4 +1,19 @@
 /* eslint-disable no-case-declarations */
+// Provide safe environment shims for service workers if dependencies expect minimal DOM globals
+if (typeof document === 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(globalThis as any).document = {
+        createElement: () => ({ innerHTML: '', textContent: '', charCodeAt: () => 0 }),
+        getElementsByTagName: () => [],
+        addEventListener: () => {},
+        removeEventListener: () => {},
+    }
+}
+if (typeof window === 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(globalThis as any).window = globalThis
+}
+
 import browser from 'webextension-polyfill'
 import { BackgroundEventNames } from '../../common/background/eventnames'
 import { BackgroundFetchRequestMessage, BackgroundFetchResponseMessage } from '../../common/background/fetch'
@@ -6,6 +21,10 @@ import { vocabularyInternalService } from '../../common/internal-services/vocabu
 import { actionInternalService } from '../../common/internal-services/action'
 import { historyInternalService } from '../../common/internal-services/history'
 import { snapshotInternalService } from '../../common/internal-services/snapshot'
+
+void actionInternalService.ensureBuiltins().catch((err) => {
+    console.error('Failed to ensure builtin actions on background init:', err)
+})
 
 browser.contextMenus?.create(
     {
@@ -121,14 +140,19 @@ browser.runtime.onConnect.addListener(async function (port) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function callMethod(request: any, service: any): Promise<any> {
-    const { method, args } = request
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = (service as any)[method](...args)
-    if (result instanceof Promise) {
-        const v = await result
-        return { result: v }
+    try {
+        const { method, args = [] } = request
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result = (service as any)[method](...args)
+        if (result instanceof Promise) {
+            const v = await result
+            return { result: v }
+        }
+        return { result }
+    } catch (err) {
+        console.error('Failed to execute background method:', request, err)
+        return { error: (err as Error)?.message || String(err) }
     }
-    return { result }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,17 +166,6 @@ browser.runtime.onMessage.addListener(async (request: any) => {
             return await callMethod(request, historyInternalService)
         case BackgroundEventNames.snapshotService:
             return await callMethod(request, snapshotInternalService)
-        case BackgroundEventNames.getItem:
-            const resp = await browser.storage.local.get(request.key)
-            return {
-                value: resp[request.key],
-            }
-        case BackgroundEventNames.setItem:
-            return await browser.storage.local.set({
-                [request.key]: request.value,
-            })
-        case BackgroundEventNames.removeItem:
-            return await browser.storage.local.remove(request.key)
         case 'openOptionsPage':
             browser.runtime.openOptionsPage()
             return

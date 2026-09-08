@@ -6,27 +6,19 @@ import { popupCardID, popupCardOffset, popupThumbID, zIndex } from './consts'
 import { Translator } from '@/common/components/Translator'
 import { InlineLookupContainer } from './InlineLookupContainer'
 import { getContainer, queryPopupCardElement, queryPopupThumbElement } from './utils'
-import { create } from 'jss'
-import preset from 'jss-preset-default'
-import { JssProvider, createGenerateId } from 'react-jss'
-import { Client as Styletron } from 'styletron-engine-atomic'
-import { Provider as StyletronProvider } from 'styletron-react'
-import { BaseProvider } from 'baseui'
 import { createRoot, Root } from 'react-dom/client'
 import hotkeys from 'hotkeys-js'
 import '@/common/i18n.js'
-import { PREFIX } from '@/common/constants'
 import { getCaretNodeType, getClientX, getClientY, getPageX, getPageY, UserEventType } from '@/common/user-event'
 import { GlobalSuspense } from '@/common/components/GlobalSuspense'
 import { type ReferenceElement } from '@floating-ui/dom'
 import InnerContainer from './InnerContainer'
 import TitleBar from './TitleBar'
 import { addShadowStyleTarget } from './shadow-styles'
+import { addStyleTarget } from '@/common/styles'
 import { setExternalOriginalText } from '@/common/store'
-import { useTheme } from '@/common/hooks/useTheme'
 
 let root: Root | null = null
-const generateId = createGenerateId()
 const hidePopupThumbTimer: number | null = null
 
 async function popupThumbClickHandler(event: UserEventType) {
@@ -72,13 +64,12 @@ async function createPopupCard() {
     $container.shadowRoot?.querySelector('div')?.appendChild($popupCard)
     if ($container.shadowRoot) {
         await addShadowStyleTarget($container.shadowRoot)
+        addStyleTarget($container.shadowRoot)
     }
     return $popupCard
 }
 
 interface PopupCardAppProps {
-    engine: Styletron
-    jss: ReturnType<typeof create>
     reference: ReferenceElement
     isCompact: boolean
     text: string
@@ -88,45 +79,26 @@ interface PopupCardAppProps {
     onClose: () => void
 }
 
-function PopupCardApp({
-    engine,
-    jss,
-    reference,
-    isCompact,
-    text,
-    pinned,
-    autoFocus,
-    isUserscript,
-    onClose,
-}: PopupCardAppProps) {
-    const { theme } = useTheme()
-
+function PopupCardApp({ reference, isCompact, text, pinned, autoFocus, isUserscript, onClose }: PopupCardAppProps) {
     return (
         <React.StrictMode>
             <GlobalSuspense>
-                <JssProvider jss={jss} generateId={generateId} classNamePrefix='__yetone-nextai-translator-jss-'>
-                    <StyletronProvider value={engine}>
-                        <BaseProvider theme={theme} zIndex={parseInt(zIndex, 10)}>
-                            <InnerContainer reference={reference} compact={isCompact}>
-                                {isCompact ? (
-                                    <InlineLookupContainer text={text} onClose={onClose} />
-                                ) : (
-                                    <>
-                                        <TitleBar pinned={pinned} onClose={onClose} />
-                                        <Translator
-                                            engine={engine}
-                                            autoFocus={autoFocus}
-                                            showSettingsIcon
-                                            defaultShowSettings={isUserscript}
-                                            showLogo={false}
-                                            openSource='content-script'
-                                        />
-                                    </>
-                                )}
-                            </InnerContainer>
-                        </BaseProvider>
-                    </StyletronProvider>
-                </JssProvider>
+                <InnerContainer reference={reference} compact={isCompact}>
+                    {isCompact ? (
+                        <InlineLookupContainer text={text} onClose={onClose} />
+                    ) : (
+                        <>
+                            <TitleBar pinned={pinned} onClose={onClose} />
+                            <Translator
+                                autoFocus={autoFocus}
+                                showSettingsIcon
+                                defaultShowSettings={isUserscript}
+                                showLogo={false}
+                                openSource='content-script'
+                            />
+                        </>
+                    )}
+                </InnerContainer>
             </GlobalSuspense>
         </React.StrictMode>
     )
@@ -147,14 +119,6 @@ async function showPopupCard(reference: ReferenceElement, text: string, autoFocu
         $popupCard = await createPopupCard()
     }
 
-    const engine = new Styletron({
-        container: $popupCard.parentElement ?? undefined,
-        prefix: `${PREFIX}-styletron-`,
-    })
-    const jss = create().setup({
-        ...preset(),
-        insertionPoint: $popupCard.parentElement ?? undefined,
-    })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(window as any).__IS_OT_BROWSER_EXTENSION_CONTENT_SCRIPT__ = true
     const isUserscript = utils.isUserscript()
@@ -162,8 +126,6 @@ async function showPopupCard(reference: ReferenceElement, text: string, autoFocu
     const isCompact = settings.useCompactLookup ?? false
     root.render(
         <PopupCardApp
-            engine={engine}
-            jss={jss}
             reference={reference}
             isCompact={isCompact}
             text={text}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { useTranslation } from 'react-i18next'
 import { IThemedStyleProps } from '../../common/types'
 import { useTheme } from '../../common/hooks/useTheme'
@@ -7,8 +7,7 @@ import { RxCross2, RxDrawingPin, RxDrawingPinFilled } from 'react-icons/rx'
 import LogoWithText from '../../common/components/LogoWithText'
 import { setSettings } from '../../common/utils'
 import { Tooltip } from '../../common/components/Tooltip'
-import { useAtomValue } from 'jotai'
-import { showSettingsAtom } from '../../common/store/setting'
+import { useAppStore } from '../../common/store'
 
 const useStyles = createUseStyles({
     container: ({ theme }: IThemedStyleProps) => ({
@@ -57,7 +56,7 @@ type TitleBarProps = {
 export default function TitleBar({ pinned = false, onClose }: TitleBarProps) {
     const { theme, themeType } = useTheme()
     const { t } = useTranslation()
-    const showSettings = useAtomValue(showSettingsAtom)
+    const showSettings = useAppStore((state) => state.showSettings)
 
     const styles = useStyles({ theme, themeType })
     const [isPinned, setIsPinned] = useState(pinned)
