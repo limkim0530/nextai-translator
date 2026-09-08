@@ -9,32 +9,40 @@ import { HistoryItem } from '../internal-services/db'
 import { isDesktopApp, isUserscript } from '../utils'
 import { backgroundHistoryService } from '../background/services/history'
 
-const historyServiceImpl: IHistoryInternalService =
-    isDesktopApp() || isUserscript() ? historyInternalService : backgroundHistoryService
+const canUseBackgroundService = (): boolean => {
+    if (isDesktopApp() || isUserscript()) {
+        return false
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return typeof chrome !== 'undefined' && Boolean((chrome as any)?.runtime?.sendMessage)
+}
+
+const getService = (): IHistoryInternalService =>
+    canUseBackgroundService() ? backgroundHistoryService : historyInternalService
 
 export const historyService = {
     create(item: CreateHistoryItem): Promise<HistoryItem> {
-        return historyServiceImpl.create(item)
+        return getService().create(item)
     },
     update(id: number, payload: UpdateHistoryPayload): Promise<void> {
-        return historyServiceImpl.update(id, payload)
+        return getService().update(id, payload)
     },
     updateFavorite(id: number, favorite: boolean): Promise<void> {
-        return historyServiceImpl.updateFavorite(id, favorite)
+        return getService().updateFavorite(id, favorite)
     },
     touch(id: number): Promise<void> {
-        return historyServiceImpl.touch(id)
+        return getService().touch(id)
     },
     delete(id: number): Promise<void> {
-        return historyServiceImpl.delete(id)
+        return getService().delete(id)
     },
     clear(): Promise<void> {
-        return historyServiceImpl.clear()
+        return getService().clear()
     },
     list(options?: HistoryQueryOptions): Promise<HistoryItem[]> {
-        return historyServiceImpl.list(options)
+        return getService().list(options)
     },
     get(id: number): Promise<HistoryItem | undefined> {
-        return historyServiceImpl.get(id)
+        return getService().get(id)
     },
 }

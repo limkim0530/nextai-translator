@@ -1,5 +1,6 @@
 import { IActionInternalService, ICreateActionOption, IUpdateActionOption } from '../../internal-services/action'
 import { Action } from '../../internal-services/db'
+import { getDefaultBuiltinActions } from '../../hooks/useActions'
 import { callMethod } from './base'
 
 class BackgroundActionService implements IActionInternalService {
@@ -12,17 +13,37 @@ class BackgroundActionService implements IActionInternalService {
     bulkPut(actions: Action[]): Promise<void> {
         return callMethod('actionService', 'bulkPut', [actions])
     }
-    get(id: number): Promise<Action | undefined> {
-        return callMethod('actionService', 'get', [id])
+    async get(id: number): Promise<Action | undefined> {
+        try {
+            const res = await callMethod('actionService', 'get', [id])
+            if (res) return res
+        } catch (err) {
+            console.error('backgroundActionService.get failed:', err)
+        }
+        return getDefaultBuiltinActions().find((a) => a.id === id)
     }
-    getByMode(mode: string): Promise<Action | undefined> {
-        return callMethod('actionService', 'getByMode', [mode])
+    async getByMode(mode: string): Promise<Action | undefined> {
+        try {
+            const res = await callMethod('actionService', 'getByMode', [mode])
+            if (res) return res
+        } catch (err) {
+            console.error('backgroundActionService.getByMode failed:', err)
+        }
+        return getDefaultBuiltinActions().find((a) => a.mode === mode)
     }
     delete(id: number): Promise<void> {
         return callMethod('actionService', 'delete', [id])
     }
-    list(): Promise<Action[]> {
-        return callMethod('actionService', 'list', [])
+    async list(): Promise<Action[]> {
+        try {
+            const res = await callMethod('actionService', 'list', [])
+            if (Array.isArray(res) && res.length > 0) {
+                return res
+            }
+        } catch (err) {
+            console.error('backgroundActionService.list failed:', err)
+        }
+        return getDefaultBuiltinActions()
     }
     count(): Promise<number> {
         return callMethod('actionService', 'count', [])

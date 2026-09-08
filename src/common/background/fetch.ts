@@ -1,6 +1,4 @@
-import { isFirefox } from '../utils'
 import { BackgroundEventNames } from './eventnames'
-import { ReadableStream as ReadableStreamPolyfill } from 'web-streams-polyfill'
 
 export interface BackgroundFetchRequestMessage {
     type: 'open' | 'abort'
@@ -39,9 +37,7 @@ export async function backgroundFetch(input: string, options: RequestInit) {
                 return
             }
 
-            const ReadableStream = isFirefox()
-                ? (ReadableStreamPolyfill as typeof window.ReadableStream)
-                : window.ReadableStream
+            const ReadableStream = window.ReadableStream
             const textEncoder = new TextEncoder()
             // Guards the promise, not just the resolve path: every exit of this
             // bridge (data, error, disconnect) has to settle it exactly once,

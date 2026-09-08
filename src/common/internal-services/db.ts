@@ -1,6 +1,7 @@
 import Dexie, { Table } from 'dexie'
 import { TranslateMode } from '../translate'
 import { LangCode } from '../lang'
+import { builtinActionModes } from '../constants'
 
 export interface VocabularyItem {
     word: string
@@ -87,6 +88,20 @@ export class LocalDB extends Dexie {
             history:
                 '++id, createdAt, updatedAt, text, translatedText, sourceLang, targetLang, actionId, actionMode, favorite',
             snapshot: 'key, updatedAt',
+        })
+        this.on('populate', (tx) => {
+            let idx = 0
+            const now = new Date().valueOf().toString()
+            tx.table('action').bulkAdd(
+                builtinActionModes.map((m) => ({
+                    idx: idx++,
+                    name: m.name,
+                    mode: m.mode,
+                    icon: m.icon,
+                    createdAt: now,
+                    updatedAt: now,
+                }))
+            )
         })
     }
 }

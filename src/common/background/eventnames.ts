@@ -8,9 +8,6 @@ export const BackgroundEventNames = {
     actionService: 'actionService',
     historyService: 'historyService',
     snapshotService: 'snapshotService',
-    getItem: 'getItem',
-    setItem: 'setItem',
-    removeItem: 'removeItem',
 }
 
 export type BackgroundVocabularyServiceMethodNames = keyof IVocabularyInternalService

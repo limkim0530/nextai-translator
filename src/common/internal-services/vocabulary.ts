@@ -29,8 +29,7 @@ class VocabularyInternalService implements IVocabularyInternalService {
     }
 
     public async listFrequencyItems(limit: number): Promise<VocabularyItem[]> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return await (this.db.vocabulary.orderBy('reviewCount') as any).desc().limit(limit).toArray()
+        return await this.db.vocabulary.orderBy('reviewCount').reverse().limit(limit).toArray()
     }
 
     public async countItems(): Promise<number> {
