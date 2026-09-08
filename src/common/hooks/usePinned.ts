@@ -1,10 +1,11 @@
 import { useCallback, useEffect } from 'react'
 import { isTauri } from '../utils'
-import { useGlobalState } from './global'
+import { useAppStore } from '../store'
 import { events } from '@/tauri/bindings'
 
 export function usePinned() {
-    const [pinned, setPinned_] = useGlobalState('pinned')
+    const pinned = useAppStore((state) => state.pinned)
+    const setPinned_ = useAppStore((state) => state.setPinned)
 
     useEffect(() => {
         if (!isTauri()) {

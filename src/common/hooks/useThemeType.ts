@@ -8,7 +8,7 @@ export const useThemeType = () => {
             const settings = await getSettings()
             return settings.themeType
         },
-        { suspense: true }
+        { suspense: false, fallbackData: 'light' }
     )
 
     return {

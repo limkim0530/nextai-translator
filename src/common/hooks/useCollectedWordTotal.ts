@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
 import { vocabularyService } from '../services/vocabulary'
-import { useGlobalState } from './global'
+import { useAppStore } from '../store'
 
 export function useCollectedWordTotal() {
-    const [collectedWordTotal, setCollectedWordTotal] = useGlobalState('collectedWordTotal')
+    const collectedWordTotal = useAppStore((state) => state.collectedWordTotal)
+    const setCollectedWordTotal = useAppStore((state) => state.setCollectedWordTotal)
 
     useEffect(() => {
         vocabularyService.countItems().then(setCollectedWordTotal)
