@@ -96,6 +96,7 @@
     "It is highly recommended to disable this feature and use the Clip Extension": "Bu özelliği devre dışı bırakmanız ve Clip Uzantısını kullanmanız şiddetle tavsiye edilir",
     "Clip Extension": "Clip Uzantısı",
     "built-in": "yerleşik",
+    "Prompts for built-in actions are managed by the system. You can specify a dedicated provider and model.": "Yerleşik eylemlere ait istemler sistem tarafından yönetilir. Özel bir sağlayıcı ve model belirtebilirsiniz.",
     "Default Action": "Varsayılan Eylem",
     "Created at": "Oluşturulma zamanı",
     "Updated at": "Güncellenme zamanı",

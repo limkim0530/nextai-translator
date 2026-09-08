@@ -96,6 +96,7 @@
     "It is highly recommended to disable this feature and use the Clip Extension": "この機能を無効にしてClip拡張機能を使用することを強くお勧めします",
     "Clip Extension": "Clip拡張機能",
     "built-in": "組み込み",
+    "Prompts for built-in actions are managed by the system. You can specify a dedicated provider and model.": "組み込みアクションのプロンプトはシステムによって管理されます。専用のプロバイダーとモデルを指定できます。",
     "Default Action": "デフォルトアクション",
     "Created at": "作成日",
     "Updated at": "更新日",

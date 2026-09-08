@@ -1,5 +1,5 @@
 import { IconBaseProps } from 'react-icons'
-import Logo from '@/common/assets/images/chatglm.svg?react'
+import Logo from '@/common/assets/images/minimax.svg?react'
 import { createUseStyles } from '@/common/styles'
 
 const useStyles = createUseStyles({
@@ -11,7 +11,7 @@ const useStyles = createUseStyles({
     },
 })
 
-export function ChatGLMIcon(props: IconBaseProps) {
+export function MinimaxIcon(props: IconBaseProps) {
     const styles = useStyles()
-    return <Logo className={styles.icon} width={props.size} height={props.size} />
+    return <Logo className={styles.icon} width={props.size} height={props.size} style={props.style} />
 }

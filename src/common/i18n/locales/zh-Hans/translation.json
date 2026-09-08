@@ -97,6 +97,7 @@
     "It is highly recommended to disable this feature and use the Clip Extension": "强烈建议您关闭此功能并使用 Clip 扩展",
     "Clip Extension": "Clip 扩展",
     "built-in": "内置",
+    "Prompts for built-in actions are managed by the system. You can specify a dedicated provider and model.": "内置动作的提示词由系统预置，您可以为其指定独立的服务商和模型。",
     "Default Action": "默认动作",
     "Created at": "创建时间",
     "Updated at": "更新时间",

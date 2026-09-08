@@ -96,6 +96,7 @@
     "It is highly recommended to disable this feature and use the Clip Extension": "이 기능을 끄고 클립 확장 프로그램을 사용하는 것을 강력히 권장합니다",
     "Clip Extension": "클립 확장 프로그램",
     "built-in": "내장",
+    "Prompts for built-in actions are managed by the system. You can specify a dedicated provider and model.": "내장 작업의 프롬프트는 시스템에서 관리됩니다. 전용 공급자와 모델을 지정할 수 있습니다.",
     "Default Action": "기본 동작",
     "Created at": "생성일",
     "Updated at": "수정일",

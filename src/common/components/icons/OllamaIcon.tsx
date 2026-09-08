@@ -1,9 +1,10 @@
 import { IconBaseProps } from 'react-icons'
 import Logo from '@/common/assets/images/ollama.svg?react'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 
 const useStyles = createUseStyles({
     icon: {
+        'display': 'block',
         '& path': {
             fill: 'currentColor',
         },

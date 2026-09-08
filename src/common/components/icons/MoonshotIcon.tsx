@@ -1,13 +1,17 @@
 import { IconBaseProps } from 'react-icons'
-import moonshotLightSrc from '@/common/assets/images/moonshot-light.png'
-import moonshotDarkSrc from '@/common/assets/images/moonshot-dark.png'
-import { useTheme } from '@/common/hooks/useTheme'
+import Logo from '@/common/assets/images/moonshot.svg?react'
+import { createUseStyles } from '@/common/styles'
+
+const useStyles = createUseStyles({
+    icon: {
+        'display': 'block',
+        '& path': {
+            fill: 'currentColor',
+        },
+    },
+})
 
 export function MoonshotIcon(props: IconBaseProps) {
-    const { themeType } = useTheme()
-    let src = moonshotLightSrc
-    if (themeType === 'dark') {
-        src = moonshotDarkSrc
-    }
-    return <img src={src} alt='Moonshot' height={props.size} width={props.size} />
+    const styles = useStyles()
+    return <Logo className={styles.icon} width={props.size} height={props.size} style={props.style} />
 }

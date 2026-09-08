@@ -1,11 +1,12 @@
 import { IconBaseProps } from 'react-icons'
 import Logo from '@/common/assets/images/claude.svg?react'
-import { createUseStyles } from 'react-jss'
+import { createUseStyles } from '@/common/styles'
 import { useTheme } from '@/common/hooks/useTheme'
 import { IThemedStyleProps } from '@/common/types'
 
 const useStyles = createUseStyles({
     icon: ({ theme }: IThemedStyleProps) => ({
+        'display': 'block',
         '& rect': {
             fill: 'currentColor',
         },

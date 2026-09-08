@@ -1,9 +1,7 @@
 import { isTraditional } from '../traditional-or-simplified'
 import ISO6391 from 'iso-639-1'
 import { LANG_CONFIGS, Config as OptionalLangConfig } from './data'
-import { oneLine } from 'common-tags'
 import { getUniversalFetch } from '../universal-fetch'
-import qs from 'qs'
 import { getSettings } from '../utils'
 
 export type LangCode =
@@ -121,7 +119,7 @@ export async function googleDetectLang(text: string): Promise<LangCode | undefin
 
     const fetcher = getUniversalFetch()
     const resp = await fetcher(
-        `https://translate.google.com/translate_a/single?dt=at&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&${qs.stringify(
+        `https://translate.google.com/translate_a/single?dt=at&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&${new URLSearchParams(
             {
                 client: 'gtx',
                 sl: 'auto',
@@ -165,9 +163,7 @@ export async function bingDetectLang(text: string): Promise<LangCode | undefined
 
     if (tokenResp.ok) {
         const token = await tokenResp.text()
-        const url = `https://api-edge.cognitive.microsofttranslator.com/detect?${qs.stringify({
-            'api-version': '3.0',
-        })}`
+        const url = 'https://api-edge.cognitive.microsofttranslator.com/detect?api-version=3.0'
 
         const resp = await fetcher(url, {
             method: 'POST',
@@ -388,7 +384,7 @@ export function getLangConfig(langCode: LangCode): LanguageConfig {
         direction: 'ltr',
         rolePrompt: 'You are a professional translator.',
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        genCommandPrompt: (sourceLanguageConfig: LanguageConfig) => oneLine`Please translate to ${config.name}`,
+        genCommandPrompt: (sourceLanguageConfig: LanguageConfig) => `Please translate to ${config.name}`,
     }
     return { ...DEFAULT_CONFIG, ...config }
 }

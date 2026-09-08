@@ -97,6 +97,7 @@
     "It is highly recommended to disable this feature and use the Clip Extension": "It is highly recommended to disable this feature and use the Clip Extension",
     "Clip Extension": "Clip Extension",
     "built-in": "built-in",
+    "Prompts for built-in actions are managed by the system. You can specify a dedicated provider and model.": "Prompts for built-in actions are managed by the system. You can specify a dedicated provider and model.",
     "Default Action": "Default Action",
     "Created at": "Created at",
     "Updated at": "Updated at",

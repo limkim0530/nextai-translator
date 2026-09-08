@@ -96,6 +96,7 @@
     "It is highly recommended to disable this feature and use the Clip Extension": "แนะนำให้ปิดใช้งานคุณสมบัตินี้และใช้ Clip Extension",
     "Clip Extension": "ส่วนขยายคลิป",
     "built-in": "ภายใน",
+    "Prompts for built-in actions are managed by the system. You can specify a dedicated provider and model.": "พรอมต์สำหรับการดำเนินการในตัวได้รับการจัดการโดยระบบ คุณสามารถระบุผู้ให้บริการและโมเดลเฉพาะได้",
     "Default Action": "การดำเนินการเริ่มต้น",
     "Created at": "สร้างเมื่อ",
     "Updated at": "อัปเดตเมื่อ",
